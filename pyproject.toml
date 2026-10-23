@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "internal_management"
+name = "gerenciador_patrimonio"
 version = "0.1.0"
 description = "Sistema de Gestão de Patrimônio e Suporte"
 readme = "README.md"

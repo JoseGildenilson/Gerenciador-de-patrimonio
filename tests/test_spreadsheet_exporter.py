@@ -93,10 +93,10 @@ def test_format_maintenances_sorting_and_variations():
 
     # Deve conter manutenções ordenadas cronologicamente
     assert len(lines) >= 4
-    assert any("Limpeza básica" in l for l in lines)
-    assert any("15/01/2022: Atualização de SO" in l for l in lines)
-    assert any("10/05/2024: Troca de SSD (Obs: SSD 500GB)" in l for l in lines)
-    assert any("01/03/2025" in l for l in lines)
+    assert any("Limpeza básica" in line for line in lines)
+    assert any("15/01/2022: Atualização de SO" in line for line in lines)
+    assert any("10/05/2024: Troca de SSD (Obs: SSD 500GB)" in line for line in lines)
+    assert any("01/03/2025" in line for line in lines)
 
 
 def test_generate_equipments_excel_empty_list():

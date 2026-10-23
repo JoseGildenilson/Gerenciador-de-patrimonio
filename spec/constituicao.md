@@ -47,3 +47,17 @@ Este documento define a Constituição do Projeto de Gestão de Patrimônio e Su
 - **Automação no GitHub Actions:** Os testes automatizados DEVEM ser executados automaticamente no GitHub Actions a cada push nas branches `develop` e `main`.
 - **Validação de Pull Requests:** Os testes automatizados DEVEM ser executados automaticamente em pull requests direcionados da branch `develop` para a branch `main`.
 - **Sincronia Spec x Testes:** Toda alteração nas especificações funcionais em `.spec/features/` DEVE vir acompanhada da atualização correspondente dos testes automatizados no mesmo Pull Request.
+
+---
+
+## 6. Nomenclatura e Identidade do Projeto
+
+- **Nome Canônico:** Gerenciador de Patrimônio.
+- **Proibição de Nome Legado:** É estritamente proibido o uso de `internal_management`, `internal-management` ou variações em qualquer arquivo, configuração, container, pacote, banco de dados ou documentação.
+- **Identificadores Oficiais:**
+  - **Pacote Python / Backend:** `gerenciador_patrimonio`
+  - **Frontend:** `patrimonio-frontend`
+  - **Banco de Dados:** `patrimonio_db` (testes: `test_patrimonio_db`)
+  - **Containers Docker:** `patrimonio_backend`, `patrimonio_frontend`, `patrimonio_postgres`
+  - **Rede e Volumes Docker:** `patrimonio_net`, `patrimonio_data`
+

@@ -138,7 +138,7 @@ def test_equipment_response_and_dashboard_schemas():
 
 
 def test_schema_edge_cases():
-    from src.domain.schemas import validate_host_ip, CatalogItemUpdate, EquipmentUpdate
+    from src.domain.schemas import CatalogItemUpdate
 
     assert validate_host_ip("") is None
     assert validate_host_ip(None) is None

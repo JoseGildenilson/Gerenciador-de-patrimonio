@@ -85,7 +85,7 @@ lerna-debug.log*
 *.db
 *.sqlite
 *.sqlite3
-internal_management.db
+patrimonio.db
 *.xlsx
 *.xls
 *.csv

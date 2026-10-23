@@ -1,6 +1,6 @@
 # Plano de Tarefas: Ambiente de Containers com Docker Compose
 
-Este documento define o plano detalhado de tarefas para a implementação da infraestrutura de containers com Docker Compose, em conformidade com a especificação [`spec.md`](file:///home/gil/code/internal_management/spec/features/docker-compose/spec.md) e com a Constituição do Projeto em [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento define o plano detalhado de tarefas para a implementação da infraestrutura de containers com Docker Compose, em conformidade com a especificação [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/docker-compose/spec.md) e com a Constituição do Projeto em [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 
@@ -61,9 +61,9 @@ Este documento define o plano detalhado de tarefas para a implementação da inf
   - [x] Criar `.env.example` com variáveis documentadas:
     - `POSTGRES_USER=postgres`
     - `POSTGRES_PASSWORD=postgres`
-    - `POSTGRES_DB=internal_management`
+    - `POSTGRES_DB=patrimonio_db`
     - `POSTGRES_PORT=5432`
-    - `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/internal_management`
+    - `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/patrimonio_db`
     - `SECRET_KEY=...`
     - `BACKEND_PORT=8000`
     - `FRONTEND_PORT=5173`
@@ -75,7 +75,7 @@ Este documento define o plano detalhado de tarefas para a implementação da inf
   - [x] Definir serviço `postgres` com healthcheck `pg_isready` e volume `postgres_data`.
   - [x] Definir serviço `backend` com `depends_on: { postgres: { condition: service_healthy } }`, portas expostas e volumes montados para live reload.
   - [x] Definir serviço `frontend` com target `development`, portas expostas e volumes montados para hot reload.
-  - [x] Configurar rede interna unificada `internal-net`.
+  - [x] Configurar rede interna unificada `patrimonio-net`.
   - *Critério de Aceite:* `docker compose up` inicia os 3 serviços de forma ordenada e acessível.
 
 - [x] **TASK-07: Criar `docker-compose.prod.yml` (Ambiente de Produção)**

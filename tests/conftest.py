@@ -54,11 +54,11 @@ else:
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["TEST_DATABASE_URL"] = TEST_DATABASE_URL
 
-from src.core.config import settings
+from src.core.config import settings  # noqa: E402
 
 settings.DATABASE_URL = TEST_DATABASE_URL
 
-import src.core.database as core_db
+import src.core.database as core_db  # noqa: E402
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 core_db.engine = test_engine

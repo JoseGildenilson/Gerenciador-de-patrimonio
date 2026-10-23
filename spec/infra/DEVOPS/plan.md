@@ -59,7 +59,7 @@ A auditoria completa da arquitetura de containers, orquestração Docker Compose
 - **Localização:** [`docker-compose.prod.yml`](file:///C:/Users/70486375447/orca/workspaces/comunica-projeto/conch/docker-compose.prod.yml#L10-L36)
 - **Causa Raiz:** O compose de produção publica `5432:5432` e `8000:8000` no host.
 - **Impacto / Risco:** O banco PostgreSQL fica sujeito a ataques de força bruta diretamente pela rede externa. A API FastAPI pode ser acessada diretamente contornando o Nginx (anulando regras de proxy, rate limit e headers de segurança).
-- **Ação:** Remover as seções `ports` dos serviços `postgres` e `backend` no `docker-compose.prod.yml`, mantendo-os acessíveis apenas internamente via `internal-net`.
+- **Ação:** Remover as seções `ports` dos serviços `postgres` e `backend` no `docker-compose.prod.yml`, mantendo-os acessíveis apenas internamente via `patrimonio-net`.
 
 #### [DEV-CRIT-05] Violação Constitucional: Ausência de Validação de Pull Requests no Pipeline de CI
 - **Localização:** [`.github/workflows/ci.yml`](file:///C:/Users/70486375447/orca/workspaces/comunica-projeto/conch/.github/workflows/ci.yml#L3-L8)

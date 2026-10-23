@@ -158,8 +158,8 @@ Caso prefira executar scripts SQL puros através de clientes como **psql**, **DB
 
 ```bash
 # Execução direta via psql no terminal:
-psql -h localhost -p 5432 -U postgres -d internal_management -f database/schema.sql
-psql -h localhost -p 5432 -U postgres -d internal_management -f database/populate.sql
+psql -h localhost -p 5432 -U postgres -d patrimonio_db -f database/schema.sql
+psql -h localhost -p 5432 -U postgres -d patrimonio_db -f database/populate.sql
 ```
 
 1. **[`database/schema.sql`](database/schema.sql)**:
@@ -230,9 +230,9 @@ cp .env.example .env
 ```
 
 > **Nota sobre o Banco de Dados:**
-> Por padrão, o `.env` aponta para `postgresql://postgres:postgres@localhost:5432/internal_management`.
+> Por padrão, o `.env` aponta para `postgresql://postgres:postgres@localhost:5432/patrimonio_db`.
 > Caso queira rodar localmente sem PostgreSQL instalado, pode usar SQLite temporário alterando a linha no `.env`:
-> `DATABASE_URL=sqlite:///./internal_management.db`
+> `DATABASE_URL=sqlite:///./patrimonio.db`
 
 #### 2. Configurar e Iniciar o Backend (FastAPI)
 ```bash

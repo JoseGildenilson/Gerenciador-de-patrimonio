@@ -10,7 +10,7 @@ __pycache__
 htmlcov
 *.egg-info
 *.db
-internal_management.db
+patrimonio.db
 dist
 build
 .env

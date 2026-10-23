@@ -478,5 +478,86 @@ describe('EquipmentDetailPage', () => {
       expect(equipmentApi.createTag).toHaveBeenCalledWith('tipo', 'Tablet Corporativo');
     });
   });
+
+  it('covers residual branches for object maintenance_type and object sector in modals', async () => {
+    const customEq: any = {
+      ...mockEquipment,
+      sector: { name: 'Setor Objeto Alpha' },
+      location: 'Sala 1',
+      maintenances: [
+        {
+          id: 99,
+          maintenance_date: '2026-05-10T10:00:00Z',
+          maintenance_type: { name: 'Manutenção Preventiva Especial' },
+          description: 'Revisão periódica',
+        },
+      ],
+    };
+
+    (equipmentApi.getEquipmentDetail as ReturnType<typeof vi.fn>).mockResolvedValueOnce(customEq);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Manutenção Preventiva Especial')).toBeInTheDocument();
+    });
+
+    const moveBtn = screen.getByRole('button', { name: /movimentar/i });
+    fireEvent.click(moveBtn);
+  });
+
+  it('covers residual branch for object location when sector is absent', async () => {
+    const customEqLocationOnly: any = {
+      ...mockEquipment,
+      sector: null,
+      location: { name: 'Sala 404 Objeto' },
+    };
+    (equipmentApi.getEquipmentDetail as ReturnType<typeof vi.fn>).mockResolvedValueOnce(customEqLocationOnly);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('ThinkPad T14 Gen 3')[0]).toBeInTheDocument();
+    });
+
+    const moveBtn = screen.getByRole('button', { name: /movimentar/i });
+    fireEvent.click(moveBtn);
+  });
+
+  it('covers movement origin and destination sector/location object fallbacks (lines 948-961)', async () => {
+    const customEqMovements: any = {
+      ...mockEquipment,
+      movements: [
+        {
+          id: 301,
+          movement_date: '2026-05-10T10:00:00Z',
+          origin_sector: { name: 'Setor Origem Objeto' },
+          destination_sector: { name: 'Setor Destino Objeto' },
+          notes: 'Transferência de setor',
+        },
+        {
+          id: 302,
+          movement_date: '2026-05-11T10:00:00Z',
+          origin_sector: null,
+          origin_location: { name: 'Local Origem Objeto' },
+          destination_sector: null,
+          destination_location: { name: 'Local Destino Objeto' },
+          notes: 'Transferência de local',
+        },
+      ],
+    };
+
+    (equipmentApi.getEquipmentDetail as ReturnType<typeof vi.fn>).mockResolvedValueOnce(customEqMovements);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Setor Origem Objeto')).toBeInTheDocument();
+      expect(screen.getByText('Setor Destino Objeto')).toBeInTheDocument();
+      expect(screen.getByText('Local Origem Objeto')).toBeInTheDocument();
+      expect(screen.getByText('Local Destino Objeto')).toBeInTheDocument();
+    });
+  });
 });
+
 

@@ -15,14 +15,14 @@ if os.path.exists(".env"):  # pragma: no cover
 class Settings(BaseModel):
     """Configurações da aplicação."""
 
-    PROJECT_NAME: str = "Gestão de Patrimônio e Suporte"
+    PROJECT_NAME: str = "Gerenciador de Patrimônio"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", os.getenv("ENV", "development"))
     SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-key-change-in-production-1234567890")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/internal_management"
+        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/patrimonio_db"
     )
     RATE_LIMIT_MAX_ATTEMPTS: int = 10
     RATE_LIMIT_WINDOW_MINUTES: int = 15

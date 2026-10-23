@@ -1,6 +1,6 @@
 # Plano de Tarefas: Padronização do .gitignore e Limpeza de Dependências
 
-Este documento define o plano detalhado de tarefas para a padronização do arquivo `.gitignore` e a limpeza de dependências versionadas indevidamente, em conformidade com a especificação [`spec.md`](file:///home/gil/code/internal_management/spec/features/gitignore/spec.md) e com a [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento define o plano detalhado de tarefas para a padronização do arquivo `.gitignore` e a limpeza de dependências versionadas indevidamente, em conformidade com a especificação [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/gitignore/spec.md) e com a [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 
@@ -29,7 +29,7 @@ Este documento define o plano detalhado de tarefas para a padronização do arqu
   - [x] Adicionar seções para Testes & Cobertura (`.pytest_cache/`, `.coverage`, `htmlcov/`, `coverage/`, `frontend/coverage/`).
   - [x] Adicionar seções para Node.js & Frontend (`node_modules/`, `frontend/node_modules/`, `dist/`, `frontend/dist/`, `frontend/build/`, `.vite/`).
   - [x] Adicionar seções para Variáveis de Ambiente (`.env`, `.env.*`, com exceção `!.env.example`).
-  - [x] Adicionar seções para Bancos de Dados & Planilhas (`*.db`, `*.sqlite`, `*.sqlite3`, `internal_management.db`, `*.xlsx`, `*.xls`).
+  - [x] Adicionar seções para Bancos de Dados & Planilhas (`*.db`, `*.sqlite`, `*.sqlite3`, `patrimonio.db`, `*.xlsx`, `*.xls`).
   - [x] Adicionar seções para Logs & Temporários (`*.log`, `tmp/`).
   - [x] Adicionar seções para IDEs & OS (`.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`).
 

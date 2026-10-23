@@ -77,7 +77,7 @@ Este documento define o plano detalhado de implementação técnica para mitigar
     - [x] Remover o bloco `ports:` do serviço `postgres` (`"${POSTGRES_PORT:-5432}:5432"`).
     - [x] Remover o bloco `ports:` do serviço `backend` (`"${BACKEND_PORT:-8000}:8000"`).
     - [x] Manter apenas o serviço `frontend` publicando portas no host (`"${FRONTEND_PROD_PORT:-3000}:8080"`).
-  - *Critério de Aceite:* Serviços `postgres` e `backend` tornam-se inalcançáveis fora da rede bridge interna `internal-net`, eliminando o risco de exposição do banco à internet.
+  - *Critério de Aceite:* Serviços `postgres` e `backend` tornam-se inalcançáveis fora da rede bridge interna `patrimonio-net`, eliminando o risco de exposição do banco à internet.
 
 - [x] **TASK-DEV-04: Proteção contra Injeção de Dados Mocks e Senhas Padrão em Produção**
   - [x] No arquivo [`entrypoint.sh`](file:///C:/Users/70486375447/orca/workspaces/comunica-projeto/conch/entrypoint.sh):
