@@ -1,5 +1,6 @@
 """Script para popular o banco de dados com dados iniciais (seed) e fictícios para testes."""
 
+from datetime import datetime, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from src.core.database import SessionLocal
@@ -16,6 +17,9 @@ from src.domain.models import (
     Category,
     Location,
     Asset,
+    PatrimonyHistory,
+    AssetMovement,
+    AssetMaintenance,
 )
 
 DEFAULT_TYPES = ["Desktop", "Notebook", "Monitor", "Impressora"]
@@ -100,12 +104,26 @@ def seed_database():
         tecnico = db.query(User).filter(User.email == "tecnico@empresa.com").first()
         if not tecnico:
             tecnico = User(
+                name="Técnico de TI",
                 email="tecnico@empresa.com",
-                hashed_password=hash_password("senha123"),
+                password_hash=hash_password("senha123"),
                 role="tecnico",
                 is_active=True,
             )
             db.add(tecnico)
+            db.flush()
+
+        # Seed colaborador
+        colaborador = db.query(User).filter(User.email == "colaborador@empresa.com").first()
+        if not colaborador:
+            colaborador = User(
+                name="Colaborador Exemplo",
+                email="colaborador@empresa.com",
+                password_hash=hash_password("senha123"),
+                role="colaborador",
+                is_active=True,
+            )
+            db.add(colaborador)
             db.flush()
 
         # Equipamentos
@@ -252,6 +270,19 @@ def seed_database():
             db.add(loc2)
             db.flush()
 
+        # Usuário Administrador SisPatrimonio
+        admin = db.query(User).filter(User.email == "admin@sispatrimonio.edu.br").first()
+        if not admin:
+            admin = User(
+                name="Administrador do Sistema",
+                email="admin@sispatrimonio.edu.br",
+                password_hash=hash_password("senha123"),
+                role="administrador",
+                is_active=True,
+            )
+            db.add(admin)
+            db.flush()
+
         # Ativo inicial SisPatrimonio
         if db.query(Asset).count() == 0:
             asset1 = Asset(
@@ -268,12 +299,64 @@ def seed_database():
                 specs={"cpu": "Intel Core i7-12700", "ram": "32GB", "storage": "1TB NVMe"},
             )
             db.add(asset1)
+            db.flush()
+
+            asset2 = Asset(
+                patrimony_number="SIS-0002",
+                serial_number="SN-SIS-002",
+                description="Notebook ThinkPad T14 Gen 3",
+                category_id=cat_info.id,
+                location_id=loc1.id,
+                assigned_user_id=colaborador.id,
+                brand="Lenovo",
+                model="ThinkPad T14",
+                purchase_cost=6200.00,
+                status="em_uso",
+                specs={"cpu": "Ryzen 7 PRO", "ram": "16GB", "storage": "512GB SSD"},
+            )
+            db.add(asset2)
+            db.flush()
+
+            # Histórico de renumeração para asset1
+            hist = PatrimonyHistory(
+                asset_id=asset1.id,
+                old_patrimony_number="SIS-0000-ANTIGO",
+                new_patrimony_number="SIS-0001",
+                reason="Substituição de plaqueta danificada",
+                changed_by_id=tecnico.id,
+            )
+            db.add(hist)
+
+            # Movimentação física e custódia para asset2
+            mov = AssetMovement(
+                asset_id=asset2.id,
+                origin_location_id=loc2.id,
+                dest_location_id=loc1.id,
+                from_user_id=None,
+                to_user_id=colaborador.id,
+                moved_by_id=tecnico.id,
+                notes="Alocação inicial do equipamento de trabalho",
+            )
+            db.add(mov)
+
+            # Manutenção técnica para asset1
+            maint = AssetMaintenance(
+                asset_id=asset1.id,
+                registered_by_id=tecnico.id,
+                maintenance_type="preventiva",
+                service_provider="Equipe Interna de TI",
+                description="Limpeza preventiva de coolers e diagnóstico de hardware",
+                cost=0.00,
+                maintenance_date=datetime.now(timezone.utc),
+            )
+            db.add(maint)
 
         db.commit()
         print("Banco de dados semeado com sucesso!")
     except Exception as e:
         db.rollback()
         print(f"Erro ao semear banco de dados: {e}")
+        raise
     finally:
         db.close()
 

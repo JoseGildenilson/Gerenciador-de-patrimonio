@@ -91,8 +91,8 @@ docker compose -f docker-compose.prod.yml up --build -d
 #### 1. Configuração do Backend
 ```bash
 # 1. Clone o repositório
-git clone git@github.com:JoseGildenilson/comunica-projeto.git
-cd comunica-projeto
+git clone https://github.com/JoseGildenilson/Gerenciador-de-patrimonio.git
+cd Gerenciador-de-patrimonio
 
 # 2. Crie e sincronize o ambiente virtual com uv
 uv sync --all-extras
@@ -100,15 +100,48 @@ uv sync --all-extras
 # 3. Configure as variáveis de ambiente (ou use os padrões)
 cp .env.example .env
 
-# 4. Aplique as migrações no banco de dados
-uv run alembic upgrade head
+# 4. Crie as tabelas e tipos do banco de dados (CLI)
+uv run db-create
 
-# 5. Popule o banco com os dados e usuários iniciais (Seed)
-uv run python -m src.infrastructure.seed
+# 5. Popule o banco com dados de teste e catálogo patrimonial (CLI)
+uv run db-seed
 
 # 6. Inicie o servidor FastAPI
 uv run uvicorn src.main:app --reload --port 8000
 ```
+
+---
+
+## 🗄️ Criação e Povoamento do Banco de Dados (Avaliação Acadêmica)
+
+Para avaliação da disciplina de **Banco de Dados**, o projeto disponibiliza duas formas independentes de inicialização do banco:
+
+### Método 1: Comandos Automatizados via CLI (Python / UV)
+
+```bash
+# 1. Cria todas as tabelas, tipos ENUM, chaves estrangeiras e índices
+uv run db-create
+
+# 2. Popula o banco com dados de exemplo (usuários, categorias, localizações, ativos, movimentações e manutenções)
+uv run db-seed
+```
+
+*(Alternativamente via módulo Python direto: `uv run python -m src.cli create-db` e `uv run python -m src.cli seed-db`)*
+
+### Método 2: Scripts SQL Nativos PostgreSQL 16 (.sql)
+
+Os scripts SQL DDL e DML puros estão organizados no diretório `database/` para execução direta no DBeaver, pgAdmin ou `psql`:
+
+```bash
+# Execução direta via psql:
+psql -U postgres -d test_internal_management -f database/schema.sql
+psql -U postgres -d test_internal_management -f database/populate.sql
+```
+
+1. **`database/schema.sql`**: Script DDL contendo criação de tipos ENUM (`user_role`, `asset_status`, `maintenance_type`), tabelas relacionais (`users`, `locations`, `categories`, `assets`, `patrimony_history`, `asset_movements`, `asset_maintenances`), restrições de integridade, índices e chaves estrangeiras.
+2. **`database/populate.sql`**: Script DML contendo carga com dados realistas, tipos de ativos, especificações dinâmicas em JSONB, movimentações físicas com termo de responsabilidade e intervenções técnicas.
+
+---
 
 #### 2. Configuração do Frontend
 ```bash

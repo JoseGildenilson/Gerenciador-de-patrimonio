@@ -141,6 +141,22 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 
 ---
 
+## Phase 8: User Story 5 - Comandos e Scripts de Criação e Povoamento do BD (Priority: P2)
+
+**Goal**: Disponibilizar comandos CLI automatizados (`uv run db-create`, `uv run db-seed`) e scripts SQL nativos (`database/schema.sql`, `database/populate.sql`) para atender às exigências acadêmicas do professor da disciplina de Banco de Dados.
+
+**Independent Test**: Executar `uv run db-create` e `uv run db-seed` e verificar a criação e carga do banco de dados, além de validar a sintaxe e integridade dos scripts SQL nativos.
+
+- [x] T051 [P] [US5] Generate native PostgreSQL DDL script in `database/schema.sql` declaring all enums and tables (`users`, `locations`, `categories`, `assets`, `patrimony_history`, `asset_movements`, `asset_maintenances`) with unique indexes, check constraints and foreign keys
+- [x] T052 [P] [US5] Generate native PostgreSQL DML script in `database/populate.sql` with rich sample data across all entities
+- [x] T053 [P] [US5] Implement CLI commands module in `src/cli.py` with `create_db()` and `seed_db()` functions
+- [x] T054 [P] [US5] Register `db-create = "src.cli:create_db"` and `db-seed = "src.cli:seed_db"` in `pyproject.toml` under `[project.scripts]`
+- [x] T055 [US5] Unit and integration tests for `src/cli.py` ensuring 100% line and branch coverage in `tests/test_cli.py`
+- [x] T056 [US5] Verify CLI commands and test suite locally with `uv run db-create`, `uv run db-seed` and `PYTHONPATH=. uv run pytest --cov=src --cov-branch --cov-fail-under=100`
+- [x] T057 [US5] Update `README.md` with explicit database creation and population instructions for professor evaluation
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

@@ -30,6 +30,14 @@ dev = [
     "ruff>=0.5.0",
 ]
 
+[project.scripts]
+db-create = "src.cli:create_db"
+db-seed = "src.cli:seed_db"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
