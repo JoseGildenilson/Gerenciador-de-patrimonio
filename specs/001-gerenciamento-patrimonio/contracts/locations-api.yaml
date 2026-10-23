@@ -1,0 +1,106 @@
+openapi: 3.0.3
+info:
+  title: SisPatrimonio - Locations API
+  version: 1.0.0
+paths:
+  /api/v1/locations:
+    get:
+      summary: Listar localizações físicas
+      parameters:
+        - name: building
+          in: query
+          schema: { type: string }
+        - name: sector
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationResponse'
+    post:
+      summary: Cadastrar nova localização física
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '409':
+          description: Espaço físico já cadastrado (conflito uq_locations_physical_space)
+
+  /api/v1/locations/{id}:
+    get:
+      summary: Detalhes de uma localização
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+    put:
+      summary: Atualizar localização
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+
+components:
+  schemas:
+    LocationCreate:
+      type: object
+      required: [building, floor, sector]
+      properties:
+        building: { type: string }
+        floor: { type: string }
+        sector: { type: string }
+        room_number: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+
+    LocationUpdate:
+      type: object
+      properties:
+        building: { type: string }
+        floor: { type: string }
+        sector: { type: string }
+        room_number: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+
+    LocationResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        building: { type: string }
+        floor: { type: string }
+        sector: { type: string }
+        room_number: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }

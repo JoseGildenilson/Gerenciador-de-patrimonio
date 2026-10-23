@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: SisPatrimonio - Categories API
+  version: 1.0.0
+paths:
+  /api/v1/categories:
+    get:
+      summary: Listar categorias patrimoniais
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+    post:
+      summary: Cadastrar nova categoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Taxa residual fora da faixa (0-100) ou vida útil inválida
+        '409':
+          description: Nome de categoria já existente
+
+  /api/v1/categories/{id}:
+    get:
+      summary: Obter detalhes da categoria
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+    put:
+      summary: Atualizar categoria
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+
+components:
+  schemas:
+    CategoryCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        useful_life_months: { type: integer, nullable: true }
+        residual_value_rate: { type: number, format: float, default: 0.00, minimum: 0, maximum: 100 }
+        requires_serial_number: { type: boolean, default: false }
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        useful_life_months: { type: integer, nullable: true }
+        residual_value_rate: { type: number, format: float, minimum: 0, maximum: 100 }
+        requires_serial_number: { type: boolean }
+
+    CategoryResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        useful_life_months: { type: integer, nullable: true }
+        residual_value_rate: { type: number }
+        requires_serial_number: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }

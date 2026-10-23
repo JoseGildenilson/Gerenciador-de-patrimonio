@@ -1,0 +1,199 @@
+openapi: 3.0.3
+info:
+  title: SisPatrimonio - Assets & Patrimony History API
+  version: 1.0.0
+paths:
+  /api/v1/assets:
+    get:
+      summary: Listar ativos com filtros
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 25 }
+        - name: category_id
+          in: query
+          schema: { type: integer }
+        - name: location_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [disponivel, em_uso, em_manutencao, baixado] }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista paginada de ativos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssetResponse'
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  pages: { type: integer }
+    post:
+      summary: Cadastrar novo ativo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+      responses:
+        '201':
+          description: Ativo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '400':
+          description: Erro de validação (ex. categoria exige número de série)
+        '409':
+          description: Conflito de unicidade de patrimônio ou serial
+
+  /api/v1/assets/{id}:
+    get:
+      summary: Obter detalhes do ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetDetailResponse'
+        '404':
+          description: Ativo não encontrado
+    put:
+      summary: Atualizar dados cadastrais do ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+
+  /api/v1/assets/{id}/renumber:
+    post:
+      summary: Renumerar plaqueta de patrimônio com histórico
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_patrimony_number, reason]
+              properties:
+                new_patrimony_number: { type: string }
+                reason: { type: string }
+      responses:
+        '200':
+          description: Patrimônio alterado e histórico gravado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatrimonyHistoryResponse'
+        '409':
+          description: Novo número de patrimônio já em uso
+
+components:
+  schemas:
+    AssetCreate:
+      type: object
+      required: [patrimony_number, description, category_id, location_id, brand]
+      properties:
+        patrimony_number: { type: string }
+        serial_number: { type: string, nullable: true }
+        description: { type: string }
+        category_id: { type: integer }
+        location_id: { type: integer }
+        assigned_user_id: { type: integer, nullable: true }
+        brand: { type: string }
+        model: { type: string, nullable: true }
+        purchase_cost: { type: number, format: float, nullable: true }
+        purchase_date: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [disponivel, em_uso, em_manutencao, baixado], default: disponivel }
+        specs: { type: object, default: {} }
+
+    AssetUpdate:
+      type: object
+      properties:
+        serial_number: { type: string, nullable: true }
+        description: { type: string }
+        category_id: { type: integer }
+        location_id: { type: integer }
+        assigned_user_id: { type: integer, nullable: true }
+        brand: { type: string }
+        model: { type: string, nullable: true }
+        purchase_cost: { type: number, format: float, nullable: true }
+        purchase_date: { type: string, format: date, nullable: true }
+        specs: { type: object }
+
+    AssetResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        patrimony_number: { type: string }
+        serial_number: { type: string, nullable: true }
+        description: { type: string }
+        category_id: { type: integer }
+        location_id: { type: integer }
+        assigned_user_id: { type: integer, nullable: true }
+        brand: { type: string }
+        model: { type: string, nullable: true }
+        purchase_cost: { type: number, nullable: true }
+        purchase_date: { type: string, nullable: true }
+        status: { type: string }
+        specs: { type: object }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AssetDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/AssetResponse'
+        - type: object
+          properties:
+            patrimony_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/PatrimonyHistoryResponse'
+
+    PatrimonyHistoryResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        asset_id: { type: integer }
+        old_patrimony_number: { type: string }
+        new_patrimony_number: { type: string }
+        reason: { type: string }
+        changed_by_id: { type: integer }
+        changed_at: { type: string, format: date-time }

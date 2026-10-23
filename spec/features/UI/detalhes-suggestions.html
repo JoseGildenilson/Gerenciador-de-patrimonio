@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Prontuário Técnico - Dell OptiPlex 7090</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        app: {
+                            bg: '#121212',
+                            surface: '#1E1E1E',
+                            border: '#333333',
+                            text: '#E0E0E0',
+                            muted: '#9E9E9E',
+                            primary: '#FFFFFF',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Material Icons Outline for general icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+    <style data-purpose="custom-utilities">
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.app.bg');
+            color: theme('colors.app.text');
+        }
+
+        .label-text {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: theme('colors.app.muted');
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .value-text {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: theme('colors.app.text');
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: theme('colors.app.muted');
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Timeline styling */
+        .timeline-container {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 11px;
+            width: 2px;
+            background-color: theme('colors.app.border');
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: -2rem;
+            top: 0.25rem;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: theme('colors.app.surface');
+            border: 2px solid theme('colors.app.border');
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .timeline-icon .material-icons-outlined {
+            font-size: 14px;
+            color: theme('colors.app.muted');
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col antialiased">
+    <!-- BEGIN: Header Section -->
+    <header
+        class="border-b border-app-border bg-app-surface px-6 py-4 flex flex-col md:flex-row md:items-center justify-between sticky top-0 z-10 gap-4">
+        <div class="flex items-center gap-4">
+            <!-- Back Button -->
+            <a class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-app-border hover:bg-app-border transition-colors text-sm font-medium text-app-text"
+                href="#">
+                <span class="material-icons-outlined text-[18px]">arrow_back</span>
+                Voltar para equipamentos
+            </a>
+            <!-- Title & Subtitle -->
+            <div class="ml-4 flex flex-col">
+                <h1 class="text-xl md:text-2xl font-semibold text-app-primary tracking-tight">Dell OptiPlex 7090 Core i7
+                    16GB SSD 512GB</h1>
+                <p class="text-[10px] font-semibold tracking-widest text-app-muted uppercase mt-0.5">Prontuário Técnico
+                </p>
+            </div>
+        </div>
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+            <button
+                class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-app-border hover:bg-app-border text-sm font-medium text-app-text transition-colors">
+                <span class="material-icons-outlined text-[16px]">edit</span>
+                Editar
+            </button>
+            <button
+                class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-app-border hover:bg-app-border text-sm font-medium text-app-text transition-colors">
+                <span class="material-icons-outlined text-[16px]">swap_horiz</span>
+                Movimentar
+            </button>
+            <button
+                class="flex items-center gap-2 px-4 py-2 rounded-md bg-app-primary hover:bg-gray-200 text-sm font-semibold text-app-bg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-app-bg focus:ring-app-primary">
+                <span class="material-icons-outlined text-[16px]">build</span>
+                Manutenção
+            </button>
+        </div>
+    </header>
+    <!-- END: Header Section -->
+    <div class="w-full max-w-7xl mx-auto p-6 md:p-8 flex flex-col gap-6">
+        <!-- BEGIN: Main Content Grid -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- BEGIN: Identificação Card -->
+            <section class="bg-app-surface rounded-lg border border-app-border p-6 flex flex-col gap-6">
+                <h2 class="card-title">
+                    <span class="material-icons-outlined text-[18px]">badge</span>
+                    Identificação
+                </h2>
+                <div class="grid grid-cols-2 gap-y-5 gap-x-4">
+                    <div>
+                        <span class="label-text">Nº Patrimônio</span>
+                        <span class="value-text">PAT-1001</span>
+                    </div>
+                    <div>
+                        <span class="label-text">Nº Série (SN)</span>
+                        <span class="value-text">SN-PATR-1001</span>
+                    </div>
+                    <div class="col-span-2">
+                        <span class="label-text">Descrição</span>
+                        <span class="value-text">Dell OptiPlex 7090 Core i7 16GB SSD 512GB</span>
+                    </div>
+                    <div>
+                        <span class="label-text">Tipo</span>
+                        <span class="value-text">Desktop</span>
+                    </div>
+                    <div>
+                        <span class="label-text">Marca &amp; Produto</span>
+                        <span class="value-text">Dell (7090-OPT)</span>
+                    </div>
+                </div>
+            </section>
+            <!-- END: Identificação Card -->
+            <!-- BEGIN: Localização & Estado Card -->
+            <section class="bg-app-surface rounded-lg border border-app-border p-6 flex flex-col gap-6">
+                <h2 class="card-title">
+                    <span class="material-icons-outlined text-[18px]">location_on</span>
+                    Localização &amp; Estado
+                </h2>
+                <div class="flex flex-col gap-4">
+                    <!-- Current Location Block -->
+                    <div class="bg-app-bg rounded-lg border border-app-border p-4 flex flex-col gap-1">
+                        <div class="flex items-center gap-2 text-app-muted">
+                            <span class="material-icons-outlined text-[16px]">place</span>
+                            <span class="label-text !mb-0 !text-app-muted">Localização Atual</span>
+                        </div>
+                        <span class="value-text text-base mt-1">TI</span>
+                    </div>
+                    <!-- Status Block -->
+                    <div class="bg-app-bg rounded-lg border border-app-border p-4 flex flex-col gap-1">
+                        <div class="flex items-center gap-2 text-app-muted">
+                            <span class="material-icons-outlined text-[16px]">sell</span>
+                            <span class="label-text !mb-0 !text-app-muted">Situação do Patrimônio</span>
+                        </div>
+                        <span class="value-text text-base mt-1 flex items-center gap-2">
+                            <span
+                                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium text-xs">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                                Em uso
+                            </span>
+                        </span>
+                    </div>
+                    <!-- Hostname -->
+                    <div class="mt-2">
+                        <span class="label-text">Hostname</span>
+                        <span
+                            class="value-text font-mono text-xs bg-app-bg px-2 py-1 rounded border border-app-border inline-block mt-1">DESK-TI-01</span>
+                    </div>
+                </div>
+            </section>
+            <!-- END: Localização & Estado Card -->
+            <!-- BEGIN: Técnica & Licença Card -->
+            <section class="bg-app-surface rounded-lg border border-app-border p-6 flex flex-col gap-6">
+                <h2 class="card-title">
+                    <span class="material-icons-outlined text-[18px]">key</span>
+                    Técnica &amp; Licença
+                </h2>
+                <div class="flex flex-col gap-5">
+                    <!-- Last Maintenance -->
+                    <div>
+                        <span class="label-text">Última Manutenção</span>
+                        <div class="flex items-center gap-2 mt-1 text-app-muted">
+                            <span class="material-icons-outlined text-[16px]">calendar_today</span>
+                            <span class="value-text !text-app-muted font-mono text-sm">Não registrada</span>
+                        </div>
+                    </div>
+                    <!-- Windows Key (Read-only styling) -->
+                    <div>
+                        <span class="label-text">Chave Windows</span>
+                        <div
+                            class="mt-1 flex items-center justify-between bg-app-bg border border-app-border rounded-md px-3 py-2">
+                            <span
+                                class="value-text font-mono text-xs tracking-[0.2em] text-app-muted opacity-80">•••••••••••••••••••••••••</span>
+                            <button aria-label="Mostrar chave"
+                                class="text-app-muted hover:text-app-text transition-colors">
+                                <span class="material-icons-outlined text-[18px]">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Observations (Read-only styling) -->
+                    <div>
+                        <span class="label-text">Observações</span>
+                        <div class="mt-1 bg-app-bg border border-app-border rounded-md px-3 py-2 min-h-[60px]">
+                            <p class="text-sm text-app-text font-medium">Equipamento cadastrado para uso do setor de TI.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- END: Técnica & Licença Card -->
+            <!-- BEGIN: Log de Atividades (Unified Timeline) -->
+            <section class="lg:col-span-3 bg-app-surface rounded-lg border border-app-border p-6 flex flex-col gap-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="card-title">
+                        <span class="material-icons-outlined text-[18px]">history</span>
+                        Log de Atividades
+                    </h2>
+                    <button
+                        class="flex items-center gap-1 text-sm font-medium text-app-muted hover:text-app-text transition-colors">
+                        <span class="material-icons-outlined text-[16px]">add</span>
+                        Adicionar Registro
+                    </button>
+                </div>
+                <div class="flex flex-col gap-3 mt-2">
+                    <!-- Timeline Item: Movement -->
+                    <article
+                        class="bg-app-bg border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-app-surface border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+                            <span class="material-icons-outlined text-[18px]">swap_horiz</span>
+                        </div>
+                        <div class="flex-1 min-w-0 flex flex-col justify-center h-full">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <h3 class="text-sm font-medium text-app-primary">Movimentação</h3>
+                                <div class="flex items-center gap-1 text-xs text-app-muted">
+                                    <span class="material-icons-outlined text-[14px]">calendar_today</span>
+                                    29/07/2026
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-app-muted mt-1">
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded font-medium bg-app-surface border border-app-border text-app-text">Estoque
+                                    TI</span>
+                                <span class="material-icons-outlined text-[14px]">arrow_forward</span>
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded font-medium bg-app-surface border border-app-border text-app-text">TI</span>
+                            </div>
+                            <p class="text-sm text-app-muted mt-2">Instalação inicial e alocação da máquina.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+            <!-- END: Log de Atividades -->
+        </main>
+        <!-- END: Main Content Grid -->
+    </div>
+</body>
+
+</html>

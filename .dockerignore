@@ -1,0 +1,35 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov
+*.egg-info
+*.db
+internal_management.db
+dist
+build
+.env
+.env*
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/coverage
+
+# Dados e planilhas sensíveis
+*.xlsx
+*.xls
+*.csv
+
+# Documentação, especificações e testes
+spec/
+.github/
+README.md
+tests/
+
+# Orquestração e configuração local
+docker-compose*.yml

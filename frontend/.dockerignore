@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+*.log
+
+# Variáveis de ambiente e testes
+.env*
+*.test.tsx
+*.spec.tsx
+tests/
+README.md

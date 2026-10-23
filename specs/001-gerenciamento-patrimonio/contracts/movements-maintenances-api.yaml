@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: SisPatrimonio - Asset Movements & Maintenances API
+  version: 1.0.0
+paths:
+  /api/v1/assets/{id}/movements:
+    get:
+      summary: Histórico de movimentações de um ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssetMovementResponse'
+    post:
+      summary: Registrar transferência de localização ou custodiante
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetMovementCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetMovementResponse'
+
+  /api/v1/movements/{movement_id}/accept-term:
+    post:
+      summary: Aceite do termo de responsabilidade pelo custodiante
+      parameters:
+        - name: movement_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetMovementResponse'
+
+  /api/v1/assets/{id}/maintenances:
+    get:
+      summary: Histórico de manutenções de um ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssetMaintenanceResponse'
+    post:
+      summary: Lançar registro de manutenção preventiva ou corretiva
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetMaintenanceCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetMaintenanceResponse'
+
+components:
+  schemas:
+    AssetMovementCreate:
+      type: object
+      required: [origin_location_id]
+      properties:
+        origin_location_id: { type: integer }
+        dest_location_id: { type: integer, nullable: true }
+        from_user_id: { type: integer, nullable: true }
+        to_user_id: { type: integer, nullable: true }
+        movement_date: { type: string, format: date-time }
+        notes: { type: string, nullable: true }
+
+    AssetMovementResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        asset_id: { type: integer }
+        origin_location_id: { type: integer }
+        dest_location_id: { type: integer, nullable: true }
+        from_user_id: { type: integer, nullable: true }
+        to_user_id: { type: integer, nullable: true }
+        moved_by_id: { type: integer }
+        term_accepted_at: { type: string, format: date-time, nullable: true }
+        movement_date: { type: string, format: date-time }
+        notes: { type: string, nullable: true }
+
+    AssetMaintenanceCreate:
+      type: object
+      required: [maintenance_type, description, maintenance_date]
+      properties:
+        maintenance_type: { type: string, enum: [preventiva, corretiva] }
+        service_provider: { type: string, nullable: true }
+        description: { type: string }
+        cost: { type: number, format: float, nullable: true }
+        maintenance_date: { type: string, format: date-time }
+
+    AssetMaintenanceResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        asset_id: { type: integer }
+        registered_by_id: { type: integer }
+        maintenance_type: { type: string, enum: [preventiva, corretiva] }
+        service_provider: { type: string, nullable: true }
+        description: { type: string }
+        cost: { type: number, nullable: true }
+        maintenance_date: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }

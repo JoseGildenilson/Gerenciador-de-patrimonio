@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "internal_management"
+version = "0.1.0"
+description = "Sistema de Gestão de Patrimônio e Suporte"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "pydantic[email]>=2.8.0",
+    "openpyxl>=3.1.5",
+    "python-multipart>=0.0.32",
+    "psycopg2-binary>=2.9.9",
+    "cryptography>=50.0.2",
+    "argon2-cffi>=25.1.0",
+    "pyjwt>=2.15.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+pythonpath = ["."]
+addopts = "-v --cov=src --cov-branch --cov-report=term-missing --ignore=tests/e2e"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["F401"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/*" = ["E402"]
+"tests/*" = ["F841", "E401"]
+
+[tool.coverage.run]
+omit = ["src/infrastructure/seed*.py"]

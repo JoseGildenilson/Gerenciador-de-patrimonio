@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Equipamentos</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            app: {
+              bg: '#121212',
+              surface: '#1E1E1E',
+              border: '#333333',
+              text: '#E0E0E0',
+              muted: '#9E9E9E',
+              primary: '#FFFFFF',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style data-purpose="custom-scroll">
+    /* Custom Scrollbar for dark theme */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #121212;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #333333;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555555;
+    }
+  </style>
+</head>
+
+<body class="bg-app-bg text-app-text font-sans antialiased min-h-screen flex flex-col">
+  <!-- BEGIN: Top Navigation Bar -->
+  <header
+    class="border-b border-app-border bg-app-surface px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div class="flex items-center gap-4">
+      <!-- Hamburger Menu Button -->
+      <button
+        class="p-2 rounded-md hover:bg-app-border transition-colors text-app-muted hover:text-app-text focus:outline-none focus:ring-2 focus:ring-app-muted">
+        <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+          stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+          <line x1="4" x2="20" y1="12" y2="12"></line>
+          <line x1="4" x2="20" y1="6" y2="6"></line>
+          <line x1="4" x2="20" y1="18" y2="18"></line>
+        </svg>
+      </button>
+      <!-- Back to Dashboard -->
+      <a class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-app-border hover:bg-app-border transition-colors text-sm font-medium"
+        href="#">
+        <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+          stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+          <path d="m15 18-6-6 6-6"></path>
+        </svg>
+        Voltar ao Dashboard
+      </a>
+      <!-- Page Title & Count -->
+      <div class="flex items-center gap-3 ml-4">
+        <h1 class="text-xl font-semibold text-app-primary">Equipamentos</h1>
+        <span class="px-2 py-0.5 rounded bg-app-border text-xs text-app-muted font-medium">34 itens</span>
+      </div>
+    </div>
+    <!-- Action Button -->
+    <button
+      class="flex items-center gap-2 px-4 py-2 bg-app-primary text-app-bg font-semibold rounded-md hover:bg-gray-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-app-bg focus:ring-app-primary">
+      <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 12h14"></path>
+        <path d="M12 5v14"></path>
+      </svg>
+      Novo Equipamento
+    </button>
+  </header>
+  <!-- END: Top Navigation Bar -->
+  <!-- BEGIN: Main Content Area -->
+  <main class="flex-1 overflow-auto p-6 max-w-7xl mx-auto w-full">
+    <!-- BEGIN: Filters & Search Section -->
+    <section class="bg-app-surface border border-app-border rounded-lg p-4 mb-6">
+      <div class="flex items-center gap-2 text-app-muted mb-4 font-medium text-sm">
+        <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+          stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+          <line x1="21" x2="14" y1="4" y2="4"></line>
+          <line x1="10" x2="3" y1="4" y2="4"></line>
+          <line x1="21" x2="12" y1="12" y2="12"></line>
+          <line x1="8" x2="3" y1="12" y2="12"></line>
+          <line x1="21" x2="16" y1="20" y2="20"></line>
+          <line x1="12" x2="3" y1="20" y2="20"></line>
+          <line x1="14" x2="14" y1="2" y2="6"></line>
+          <line x1="8" x2="8" y1="10" y2="14"></line>
+          <line x1="16" x2="16" y1="18" y2="22"></line>
+        </svg>
+        Filtros &amp; Busca
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <!-- Dropdown Filters -->
+        <div class="relative">
+          <select
+            class="appearance-none bg-app-bg border border-app-border text-app-text text-sm rounded-md pl-3 pr-8 py-2 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none">
+            <option>Tipo</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-app-muted">
+            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="relative">
+          <select
+            class="appearance-none bg-app-bg border border-app-border text-app-text text-sm rounded-md pl-3 pr-8 py-2 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none">
+            <option>Localização</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-app-muted">
+            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="relative">
+          <select
+            class="appearance-none bg-app-bg border border-app-border text-app-text text-sm rounded-md pl-3 pr-8 py-2 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none">
+            <option>Situação</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-app-muted">
+            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </div>
+        </div>
+        <!-- Text Input Filters -->
+        <input
+          class="bg-app-bg border border-app-border text-app-text text-sm rounded-md px-3 py-2 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none placeholder-app-muted/50 w-32"
+          placeholder="Patrimônio..." type="text" />
+        <input
+          class="bg-app-bg border border-app-border text-app-text text-sm rounded-md px-3 py-2 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none placeholder-app-muted/50 w-32"
+          placeholder="Série..." type="text" />
+        <input
+          class="bg-app-bg border border-app-border text-app-text text-sm rounded-md px-3 py-2 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none placeholder-app-muted/50 w-32"
+          placeholder="Produto..." type="text" />
+        <!-- Global Search -->
+        <div class="relative flex-1 min-w-[200px]">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-app-muted">
+            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+          </div>
+          <input
+            class="bg-app-bg border border-app-border text-app-text text-sm rounded-md pl-9 pr-3 py-2 w-full focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none placeholder-app-muted/50"
+            placeholder="Pesquisar..." type="text" />
+        </div>
+      </div>
+    </section>
+    <!-- END: Filters & Search Section -->
+    <!-- BEGIN: List Header Controls -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-app-muted">Ordenar por:</span>
+        <div class="relative">
+          <select
+            class="appearance-none bg-app-surface border border-app-border text-app-text text-sm rounded-md pl-3 pr-8 py-1.5 focus:ring-1 focus:ring-app-muted focus:border-app-muted focus:outline-none">
+            <option>Mais recentes / Antigos</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-app-muted">
+            <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </div>
+        </div>
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-app-surface border border-app-border rounded-md text-sm text-app-text hover:bg-app-border transition-colors">
+          <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 5v14"></path>
+            <path d="m19 12-7 7-7-7"></path>
+          </svg>
+          Decrescente
+        </button>
+      </div>
+      <div class="text-sm text-app-muted">
+        Pág. <span class="text-app-text font-medium">1</span> de <span class="text-app-text font-medium">2</span>
+      </div>
+    </div>
+    <!-- END: List Header Controls -->
+    <!-- BEGIN: Equipment List -->
+    <div class="flex flex-col gap-3">
+      <!-- Item 1 -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <!-- Icon -->
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <!-- Details -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Dell OptiPlex 7090 Core i7 16GB SSD 512GB</h3>
+            <!-- Brand & Category Tags -->
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Dell</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <!-- Status: Em uso (Bright Green) -->
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              Em uso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> TI</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1001</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1001</span></span>
+          </div>
+        </div>
+        <!-- Meta Info -->
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-muted">
+            <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            Não registrada
+          </div>
+        </div>
+      </article>
+      <!-- Item 2 -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Lenovo ThinkCentre M70q Tiny Core i5 16GB</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Lenovo</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              Em uso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> Comunicação</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1002</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1002</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-text">
+            <svg class="text-app-muted" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+              stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"
+              xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            06/08/2026
+          </div>
+        </div>
+      </article>
+      <!-- Item 3 -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">HP EliteDesk 800 G6 Small Form Factor Core i7
+            </h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">HP</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              Em uso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> Rádio Produção</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1003</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1003</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-muted">
+            <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            Não registrada
+          </div>
+        </div>
+      </article>
+      <!-- Item 4 (Apple, Desktop) -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Apple Mac Mini M2 16GB SSD 512GB</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Apple</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              Em uso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> Diretoria</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1004</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1004</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-muted">
+            <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            Não registrada
+          </div>
+        </div>
+      </article>
+      <!-- Item 5 (Ocioso) -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Dell Vostro 3710 Small Desktop Core i5</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Dell</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <!-- Status: Ocioso (Blue/Neutral) -->
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+              Ocioso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> TI</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1005</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1005</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-text">
+            <svg class="text-app-muted" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+              stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"
+              xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            03/08/2026
+          </div>
+        </div>
+      </article>
+      <!-- Item 6 (Lenovo, Desktop) -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Lenovo ThinkCentre M90q Gen 3 Tiny i9</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Lenovo</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              Em uso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> Rádio Produção</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1006</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1006</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-muted">
+            <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            Não registrada
+          </div>
+        </div>
+      </article>
+      <!-- Item 7 (Aguardando recolhimento) -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">HP ProDesk 400 G7 Microtower i5 8GB</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">HP</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <!-- Status: Aguardando recolhimento (Amber) -->
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              Aguardando recolhimento
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> Comunicação</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1007</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1007</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-muted">
+            <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            Não registrada
+          </div>
+        </div>
+      </article>
+      <!-- Item 8 (Baixado) -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer opacity-75">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <rect height="8" rx="2" width="14" x="5" y="2"></rect>
+            <rect height="8" rx="2" width="20" x="2" y="14"></rect>
+            <path d="M6 18h.01"></path>
+            <path d="M10 18h.01"></path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Dell OptiPlex 3080 Tower Core i3</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Dell</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Desktop</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <!-- Status: Baixado (Gray) -->
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-600/20 text-gray-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+              Baixado
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> TI</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1008</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1008</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-text">
+            <svg class="text-app-muted" fill="none" height="14" stroke="currentColor" stroke-linecap="round"
+              stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14"
+              xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            31/07/2026
+          </div>
+        </div>
+      </article>
+      <!-- Item 9 (Notebook) -->
+      <article
+        class="bg-app-surface border border-app-border rounded-lg p-4 flex items-start gap-4 hover:border-gray-600 transition-colors cursor-pointer">
+        <div
+          class="w-12 h-12 rounded-lg bg-app-bg border border-app-border flex items-center justify-center shrink-0 text-app-muted">
+          <!-- Notebook Icon -->
+          <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16">
+            </path>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="text-base font-medium text-app-primary truncate">Lenovo ThinkPad T480 Core i5 16GB SSD 256GB</h3>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Lenovo</span>
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300">Notebook</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-app-muted mt-2">
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+              Em uso
+            </span>
+            <span class="text-app-border">•</span>
+            <span class="flex items-center gap-1"><svg fill="none" height="12" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="12"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg> TI</span>
+            <span class="text-app-border">•</span>
+            <span>Patrimônio: <span class="text-app-text">PAT-1009</span></span>
+            <span class="text-app-border">•</span>
+            <span>SN: <span class="text-app-text">SN-PATR-1009</span></span>
+          </div>
+        </div>
+        <div class="shrink-0 text-right flex flex-col justify-between h-full py-1">
+          <span class="text-[10px] font-medium text-app-muted uppercase tracking-wider mb-1">Última Manutenção</span>
+          <div class="flex items-center justify-end gap-1 text-xs text-app-muted">
+            <svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+              <rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+              <line x1="16" x2="16" y1="2" y2="6"></line>
+              <line x1="8" x2="8" y1="2" y2="6"></line>
+              <line x1="3" x2="21" y1="10" y2="10"></line>
+            </svg>
+            Não registrada
+          </div>
+        </div>
+      </article>
+    </div>
+    <!-- END: Equipment List -->
+  </main>
+  <!-- END: Main Content Area -->
+</body>
+
+</html>
