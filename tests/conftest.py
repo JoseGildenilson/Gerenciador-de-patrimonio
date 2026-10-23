@@ -26,25 +26,30 @@ def compile_check_constraint_sqlite(element, compiler, **kw):
     return compiler.visit_check_constraint(element, **kw)
 
 
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    os.getenv("DATABASE_URL", "postgresql://postgres@localhost:5432/comunica_test"),
-)
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
 
 _use_sqlite = False
-try:
-    _pg_engine = create_engine(TEST_DATABASE_URL, poolclass=NullPool)
-    with _pg_engine.connect() as _c:
-        pass
-    test_engine = _pg_engine
-except Exception:
+if TEST_DATABASE_URL.startswith("sqlite"):
     _use_sqlite = True
-    TEST_DATABASE_URL = "sqlite:///:memory:"
     test_engine = create_engine(
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+else:
+    try:
+        _pg_engine = create_engine(TEST_DATABASE_URL, poolclass=NullPool)
+        with _pg_engine.connect() as _c:
+            pass
+        test_engine = _pg_engine
+    except Exception:
+        _use_sqlite = True
+        TEST_DATABASE_URL = "sqlite:///:memory:"
+        test_engine = create_engine(
+            TEST_DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
 
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["TEST_DATABASE_URL"] = TEST_DATABASE_URL
