@@ -659,6 +659,7 @@ def test_equipment_use_cases_edge_cases_and_branches(
             sector_id=test_catalogs["sector_com"].id,
             status_id=test_catalogs["status_ocioso"].id,
         ),
+        performed_by_user_id=user.id,
     )
     assert upd_valid_cats.equipment_type_id == type_item.id
     assert upd_valid_cats.sector_id == test_catalogs["sector_com"].id
@@ -672,6 +673,7 @@ def test_equipment_use_cases_edge_cases_and_branches(
             sector_id=test_catalogs["sector_ti"].id,
             status_id=test_catalogs["status_em_uso"].id,
         ),
+        performed_by_user_id=user.id,
     )
 
     # Manter mesmos identificadores (clean == old)
