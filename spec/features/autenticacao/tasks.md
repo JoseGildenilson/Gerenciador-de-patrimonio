@@ -1,6 +1,6 @@
 # Plano de Tarefas: Autenticação de Usuário
 
-Este documento especifica o plano detalhado de implementação para a funcionalidade de **Autenticação de Usuário**, mapeando cada requisito da especificação [`spec.md`](file:///home/gil/code/internal_management/spec/features/autenticacao/spec.md) e cumprindo os princípios da [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento especifica o plano detalhado de implementação para a funcionalidade de **Autenticação de Usuário**, mapeando cada requisito da especificação [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/autenticacao/spec.md) e cumprindo os princípios da [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 

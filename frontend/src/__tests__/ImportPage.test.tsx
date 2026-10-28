@@ -312,5 +312,72 @@ describe('ImportPage (Frontend)', () => {
 
     expect(screen.getByText('Carregar Arquivo de Inventário')).toBeInTheDocument();
   });
+
+  it('cobre branches de linhas com campos vazios (linhas 368-378, 386)', async () => {
+    const mockPreviewWithEmptyFields = {
+      filename: 'vazio.xlsx',
+      total_rows: 1,
+      sample_rows: [
+        {
+          row_number: 99,
+          equipment_type: '',
+          location: '',
+          status: '',
+          description: '',
+          patrimony_number: null,
+          serial_number: null,
+          brand: '',
+          last_maintenance_at: '',
+        },
+      ],
+      detected_sheet: 'Patrimônio',
+      headers: ['TIPO', 'LOCALIZAÇÃO'],
+    };
+
+    (importApi.previewSpreadsheet as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockPreviewWithEmptyFields);
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/importar']}>
+          <Routes>
+            <Route path="/importar" element={<ImportPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const file = new File(['mock content'], 'vazio.xlsx');
+    const fileInput = screen.getByTestId('spreadsheet-file-input');
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText('vazio.xlsx')).toBeInTheDocument();
+    });
+
+    const dashes = screen.getAllByText('—');
+    expect(dashes.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('suporta drop com lista de arquivos vazia', () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/importar']}>
+          <Routes>
+            <Route path="/importar" element={<ImportPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const dropZone = screen.getByText('Clique para escolher o arquivo').closest('div')!.parentElement!;
+    fireEvent.drop(dropZone, {
+      dataTransfer: {
+        files: [],
+      },
+    });
+
+    expect(importApi.previewSpreadsheet).not.toHaveBeenCalled();
+  });
 });
+
 

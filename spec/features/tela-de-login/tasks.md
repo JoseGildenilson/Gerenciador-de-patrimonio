@@ -1,6 +1,6 @@
 # Plano de Tarefas: Tela de Login (Frontend React)
 
-Este documento especifica o plano detalhado de implementação para a **Tela de Login** no Frontend React, mapeando cada requisito da especificação [`spec.md`](file:///home/gil/code/internal_management/spec/features/tela-de-login/spec.md) e cumprindo os princípios da [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento especifica o plano detalhado de implementação para a **Tela de Login** no Frontend React, mapeando cada requisito da especificação [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/tela-de-login/spec.md) e cumprindo os princípios da [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 

@@ -2,8 +2,19 @@
 
 from typing import Generator
 from sqlalchemy import create_engine
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
 from src.core.config import settings
+
+
+@compiles(CheckConstraint, "sqlite")
+def _compile_check_constraint_sqlite(element, compiler, **kw):  # pragma: no cover
+    sqltext = str(element.sqltext)
+    if "interval" in sqltext or "family(" in sqltext:
+        return None
+    return compiler.visit_check_constraint(element, **kw)
+
 
 # Garante suporte a SQLite (connect_args) e PostgreSQL
 connect_args = {}

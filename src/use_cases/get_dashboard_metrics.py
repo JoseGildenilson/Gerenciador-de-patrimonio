@@ -15,9 +15,14 @@ class GetDashboardMetricsUseCase:
     def execute(
         self, user_id: int | None = None, role: str = "tecnico"
     ) -> DashboardMetricsResponse:
-        """Executa a consulta de métricas patrimoniais consolidadas."""
+        """Executa a consulta de métricas patrimoniais consolidadas a partir do modelo canônico."""
         metrics = self.dashboard_repo.get_metrics()
         return DashboardMetricsResponse(
+            assets_total=metrics["assets_total"],
+            assets_in_maintenance=metrics["assets_in_maintenance"],
+            assets_in_use=metrics["assets_in_use"],
+            assets_available=metrics["assets_available"],
+            assets_decommissioned=metrics["assets_decommissioned"],
             equipments_total=metrics["equipments_total"],
             equipments_in_maintenance=metrics["equipments_in_maintenance"],
             equipments_in_use=metrics["equipments_in_use"],
@@ -25,4 +30,6 @@ class GetDashboardMetricsUseCase:
             by_status=metrics["by_status"],
             by_type=metrics["by_type"],
             by_sector=metrics["by_sector"],
+            by_category=metrics["by_category"],
+            by_location=metrics["by_location"],
         )

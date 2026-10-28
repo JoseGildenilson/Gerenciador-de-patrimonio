@@ -99,3 +99,14 @@ Centralizar o inventário de ativos e o histórico de intervenções técnicas e
 - Os testes automatizados DEVEM ser executados automaticamente no GitHub Actions a cada push nas branches `develop` e `main`.
 - Os testes automatizados DEVEM ser executados automaticamente em pull requests direcionados da branch `develop` para a branch `main`.
 - Toda alteração nas especificações funcionais em `.spec/features/` DEVE vir acompanhada da atualização correspondente dos testes automatizados no mesmo Pull Request.
+
+## Nomenclatura e Identidade do Projeto
+
+- **Nome Canônico:** Gerenciador de Patrimônio.
+- **Proibição de Nome Legado:** É estritamente proibido o uso de `internal_management`, `internal-management` ou variações em qualquer arquivo, configuração, container, pacote, banco de dados ou documentação.
+- **Identificadores Oficiais:**
+  - **Pacote Python / Backend:** `gerenciador_patrimonio`
+  - **Frontend:** `patrimonio-frontend`
+  - **Banco de Dados:** `patrimonio_db` (testes: `test_patrimonio_db`)
+  - **Containers Docker:** `patrimonio_backend`, `patrimonio_frontend`, `patrimonio_postgres`
+  - **Rede e Volumes Docker:** `patrimonio_net`, `patrimonio_data`

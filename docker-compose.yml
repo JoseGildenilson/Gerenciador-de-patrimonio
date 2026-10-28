@@ -1,34 +1,34 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: internal_management_postgres
+    container_name: patrimonio_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-internal_management}
+      POSTGRES_DB: ${POSTGRES_DB:-patrimonio_db}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-internal_management}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-patrimonio_db}"]
       interval: 5s
       timeout: 3s
       retries: 5
       start_period: 5s
     networks:
-      - internal-net
+      - patrimonio-net
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: internal_management_backend
+    container_name: patrimonio_backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/internal_management}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-patrimonio_db}
       SECRET_KEY: ${SECRET_KEY:-super-secret-key-change-in-production-1234567890}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-1}
@@ -51,14 +51,14 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - internal-net
+      - patrimonio-net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: development
-    container_name: internal_management_frontend
+    container_name: patrimonio_frontend
     restart: unless-stopped
     environment:
       - VITE_BACKEND_URL=http://backend:8000
@@ -74,13 +74,13 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - internal-net
+      - patrimonio-net
 
 volumes:
   postgres_data:
-    name: internal_management_postgres_data
+    name: patrimonio_data
 
 networks:
-  internal-net:
-    name: internal_management_net
+  patrimonio-net:
+    name: patrimonio_net
     driver: bridge

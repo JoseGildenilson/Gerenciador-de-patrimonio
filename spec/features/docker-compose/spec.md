@@ -15,8 +15,8 @@ Esta especificação define a arquitetura, configuração e ciclo de vida dos co
 - **Variáveis de Ambiente:**
   - `POSTGRES_USER`: Usuário do banco (padrão: `postgres`).
   - `POSTGRES_PASSWORD`: Senha do banco (padrão: `postgres`).
-  - `POSTGRES_DB`: Nome da base de dados (padrão: `internal_management`).
-- **Healthcheck:** Utiliza `pg_isready -U postgres -d internal_management` com intervalo de 5s, timeout de 3s e 5 tentativas para garantir que o serviço esteja pronto antes do início do backend.
+  - `POSTGRES_DB`: Nome da base de dados (padrão: `patrimonio_db`).
+- **Healthcheck:** Utiliza `pg_isready -U postgres -d patrimonio_db` com intervalo de 5s, timeout de 3s e 5 tentativas para garantir que o serviço esteja pronto antes do início do backend.
 
 ### 2.2 Serviço de Backend (`backend`)
 - **Base da Imagem:** `python:3.13-slim`.
@@ -42,8 +42,8 @@ Esta especificação define a arquitetura, configuração e ciclo de vida dos co
   - Estágio 1 (Builder): Build com `npm run build` gerando bundle estático em `/app/dist`.
   - Estágio 2 (Runner): Servidor web `nginx:alpine` servindo os arquivos estáticos na porta `80` (mapeada para `3000`), com regras de fallback SPA (`try_files $uri $uri/ /index.html`) e proxy reverso para `/api/` direcionado ao container do backend.
 
-### 2.4 Rede Compartilhada (`internal-net`)
-- Uma rede bridge customizada (`internal-net`) que permite a comunicação direta por nome de host (`postgres`, `backend`, `frontend`) entre todos os serviços.
+### 2.4 Rede Compartilhada (`patrimonio-net`)
+- Uma rede bridge customizada (`patrimonio-net`) que permite a comunicação direta por nome de host (`postgres`, `backend`, `frontend`) entre todos os serviços.
 
 ---
 

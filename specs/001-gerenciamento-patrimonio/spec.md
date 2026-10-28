@@ -72,6 +72,22 @@ Como Técnico, quero registrar substituições de plaquetas de patrimônio com j
 
 ---
 
+### User Story 5 - Comandos e Scripts de Criação e Povoamento do Banco de Dados (Priority: P2)
+
+Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sistema, quero dispor de comandos automatizados na CLI (`uv run db-create` e `uv run db-seed`) e scripts SQL nativos (`database/schema.sql` e `database/populate.sql`), para criar e popular o banco de dados de maneira rápida, reprodutível e independente da ferramenta de execução (psql, DBeaver, pgAdmin ou terminal).
+
+**Why this priority**: Requisito acadêmico obrigatório para entrega e avaliação prática do modelo relacional da disciplina de Banco de Dados.
+
+**Independent Test**: Executar `database/schema.sql` e `database/populate.sql` via psql ou executar `uv run db-create` seguido de `uv run db-seed`, confirmando criação íntegra das tabelas, enums e dados iniciais no PostgreSQL.
+
+**Acceptance Scenarios**:
+
+1. **Given** um banco de dados PostgreSQL vazio, **When** o comando `uv run db-create` for executado, **Then** todos os enums e tabelas do modelo de patrimônio devem ser criados com suas chaves e índices.
+2. **Given** um banco criado, **When** o comando `uv run db-seed` for executado, **Then** o sistema deve inserir dados de teste para usuários (admin, técnico, colaborador), categorias, localizações, ativos com JSONB, movimentações e manutenções com sucesso.
+3. **Given** os arquivos `database/schema.sql` e `database/populate.sql`, **When** inspecionados ou executados em um cliente SQL padrão (psql / DBeaver), **Then** devem conter a sintaxe DDL e DML pura válida para PostgreSQL 16.
+
+---
+
 ### Edge Cases
 
 - **Exclusão Lógica de Ativos e Usuários**: Ativos e usuários possuem `deleted_at`. Um usuário excluído logicamente não pode receber novas atribuições de custódia de bens (`assigned_user_id`).
@@ -92,6 +108,8 @@ Como Técnico, quero registrar substituições de plaquetas de patrimônio com j
 - **FR-007**: Toda alteração no número de patrimônio de um ativo DEVE gerar atomicamente um registro em `patrimony_history` contendo `asset_id`, `old_patrimony_number`, `new_patrimony_number`, `reason`, `changed_by_id` e timestamp.
 - **FR-008**: Toda movimentação de ativo DEVE ser registrada em `asset_movements` contendo `origin_location_id`, `dest_location_id` (anulável para baixa patrimonial), `from_user_id` e `to_user_id` opcionais, `moved_by_id`, `movement_date`, observações e `term_accepted_at` opcional.
 - **FR-009**: O sistema DEVE registrar manutenções em `asset_maintenances` contendo `asset_id`, `registered_by_id`, `maintenance_type`, `service_provider` opcional, descrição textual, custo monetário e data da manutenção.
+- **FR-010**: O sistema DEVE fornecer comandos CLI (`uv run db-create` e `uv run db-seed`) registrados como entrypoints em `pyproject.toml` para criar tabelas/migrações e popular dados completos do SisPatrimonio.
+- **FR-011**: O sistema DEVE fornecer arquivos SQL nativos (`database/schema.sql` e `database/populate.sql`) contendo DDL e DML prontos para execução em clientes SQL padrão para PostgreSQL 16.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -111,6 +129,7 @@ Como Técnico, quero registrar substituições de plaquetas de patrimônio com j
 - **SC-002**: Tempo de execução de consultas de ativos filtradas por categoria, localização ou status inferior a 100ms para bases de até 10.000 ativos.
 - **SC-003**: 100% das operações de renumeração de patrimônio registradas atomicamente sem perda de rastreabilidade do identificador anterior.
 - **SC-004**: Zero violações das restrições de integridade referencial e unicidade física composta em toda a suíte de testes automatizados.
+- **SC-005**: Comandos `uv run db-create` e `uv run db-seed` executam sem erros, populando com sucesso todas as entidades do modelo e mantendo cobertura de código em 100%.
 
 ## Assumptions
 

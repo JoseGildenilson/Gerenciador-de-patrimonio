@@ -8,7 +8,7 @@ import time
 import os
 from sqlalchemy import create_engine, text
 
-db_url = os.getenv("DATABASE_URL", "sqlite:///./internal_management.db")
+db_url = os.getenv("DATABASE_URL", "sqlite:///./patrimonio.db")
 print(f"Testando conexão com: {db_url.split('@')[-1] if '@' in db_url else db_url}")
 
 max_retries = 30

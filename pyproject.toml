@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "internal_management"
+name = "gerenciador_patrimonio"
 version = "0.1.0"
 description = "Sistema de Gestão de Patrimônio e Suporte"
 readme = "README.md"
@@ -29,6 +29,14 @@ dev = [
     "httpx>=0.27.0",
     "ruff>=0.5.0",
 ]
+
+[project.scripts]
+db-create = "src.cli:create_db"
+db-seed = "src.cli:seed_db"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

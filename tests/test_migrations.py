@@ -21,16 +21,13 @@ def test_alembic_migrations_lifecycle(tmp_path):
                 conn.execute(text("DROP DATABASE IF EXISTS test_migrations_lifecycle;"))
                 conn.execute(text("CREATE DATABASE test_migrations_lifecycle;"))
             db_url = test_db_url.rsplit("/", 1)[0] + "/test_migrations_lifecycle"
-        except Exception as e:
-            pytest.skip(f"PostgreSQL offline ({e}); skipping Alembic PostgreSQL lifecycle test")
-    elif test_db_url and "sqlite" in test_db_url:
-        pytest.skip(
-            "Alembic migrations contain PostgreSQL-specific DDL (e.g. DROP TABLE CASCADE, triggers, INET); requires PostgreSQL"
-        )
+        except Exception:
+            admin_engine = None
+            db_file = tmp_path / "test_migration.db"
+            db_url = f"sqlite:///{db_file}"
     else:
         db_file = tmp_path / "test_migration.db"
         db_url = f"sqlite:///{db_file}"
-        pytest.skip("Alembic migrations contain PostgreSQL-specific DDL; requires PostgreSQL")
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", db_url)
@@ -42,14 +39,8 @@ def test_alembic_migrations_lifecycle(tmp_path):
         engine = create_engine(db_url)
         inspector = inspect(engine)
         tables = inspector.get_table_names()
+        # Tabelas canônicas DBML estritamente presentes
         assert "users" in tables
-        assert "equipments" in tables
-        assert "equipment_types" in tables
-        assert "sectors" in tables
-        assert "equipment_statuses" in tables
-        assert "maintenance_types" in tables
-        assert "equipment_movements" in tables
-        assert "equipment_maintenances" in tables
         assert "locations" in tables
         assert "categories" in tables
         assert "assets" in tables
@@ -57,6 +48,15 @@ def test_alembic_migrations_lifecycle(tmp_path):
         assert "asset_movements" in tables
         assert "asset_maintenances" in tables
         assert "alembic_version" in tables
+        # Tabelas legadas estritamente expurgadas
+        assert "equipments" not in tables
+        assert "equipment_types" not in tables
+        assert "sectors" not in tables
+        assert "equipment_statuses" not in tables
+        assert "maintenance_types" not in tables
+        assert "equipment_movements" not in tables
+        assert "equipment_maintenances" not in tables
+        assert "login_attempts" not in tables
 
         # 2. Reverte todas as migrações (downgrade base)
         command.downgrade(cfg, "base")
@@ -71,13 +71,20 @@ def test_alembic_migrations_lifecycle(tmp_path):
         inspector = inspect(engine)
         reapplied_tables = inspector.get_table_names()
         assert "users" in reapplied_tables
-        assert "equipments" in reapplied_tables
-        assert "equipment_types" in reapplied_tables
-        assert "sectors" in reapplied_tables
-        assert "equipment_statuses" in reapplied_tables
-        assert "maintenance_types" in reapplied_tables
-        assert "equipment_movements" in reapplied_tables
-        assert "equipment_maintenances" in reapplied_tables
+        assert "locations" in reapplied_tables
+        assert "categories" in reapplied_tables
+        assert "assets" in reapplied_tables
+        assert "patrimony_history" in reapplied_tables
+        assert "asset_movements" in reapplied_tables
+        assert "asset_maintenances" in reapplied_tables
+        assert "equipments" not in reapplied_tables
+        assert "equipment_types" not in reapplied_tables
+        assert "sectors" not in reapplied_tables
+        assert "equipment_statuses" not in reapplied_tables
+        assert "maintenance_types" not in reapplied_tables
+        assert "equipment_movements" not in reapplied_tables
+        assert "equipment_maintenances" not in reapplied_tables
+        assert "login_attempts" not in reapplied_tables
         engine.dispose()
     finally:
         if admin_engine:

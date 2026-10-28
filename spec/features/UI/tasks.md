@@ -1,6 +1,6 @@
 # Plano de Tarefas: Redesign Visual & Design System Anti-IA
 
-Este documento detalha as etapas de implementação para o redesign do frontend, mapeando cada requisito definido em [`spec.md`](file:///home/gil/code/internal_management/spec/features/UI/spec.md) e assegurando conformidade com a [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento detalha as etapas de implementação para o redesign do frontend, mapeando cada requisito definido em [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/UI/spec.md) e assegurando conformidade com a [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 

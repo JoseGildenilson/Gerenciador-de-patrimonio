@@ -141,6 +141,43 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 
 ---
 
+## Phase 8: User Story 5 - Comandos e Scripts de Criação e Povoamento do BD (Priority: P2)
+
+**Goal**: Disponibilizar comandos CLI automatizados (`uv run db-create`, `uv run db-seed`) e scripts SQL nativos (`database/schema.sql`, `database/populate.sql`) para atender às exigências acadêmicas do professor da disciplina de Banco de Dados.
+
+**Independent Test**: Executar `uv run db-create` e `uv run db-seed` e verificar a criação e carga do banco de dados, além de validar a sintaxe e integridade dos scripts SQL nativos.
+
+- [x] T051 [P] [US5] Generate native PostgreSQL DDL script in `database/schema.sql` declaring all enums and tables (`users`, `locations`, `categories`, `assets`, `patrimony_history`, `asset_movements`, `asset_maintenances`) with unique indexes, check constraints and foreign keys
+- [x] T052 [P] [US5] Generate native PostgreSQL DML script in `database/populate.sql` with rich sample data across all entities
+- [x] T053 [P] [US5] Implement CLI commands module in `src/cli.py` with `create_db()` and `seed_db()` functions
+- [x] T054 [P] [US5] Register `db-create = "src.cli:create_db"` and `db-seed = "src.cli:seed_db"` in `pyproject.toml` under `[project.scripts]`
+- [x] T055 [US5] Unit and integration tests for `src/cli.py` ensuring 100% line and branch coverage in `tests/test_cli.py`
+- [x] T056 [US5] Verify CLI commands and test suite locally with `uv run db-create`, `uv run db-seed` and `PYTHONPATH=. uv run pytest --cov=src --cov-branch --cov-fail-under=100`
+- [x] T057 [US5] Update `README.md` with explicit database creation and population instructions for professor evaluation
+
+---
+
+## Phase 8: Correções, Conformidade Constitucional e Quality Gate 100%
+
+**Purpose**: Resolver pendências identificadas pela auditoria de testes (violações constitucionais, bug de Docker prod, lint no backend e cobertura 100% no frontend)
+
+- [x] T058 [P] Remover arquivo de banco de dados remanescente `internal_management.db` da raiz para cumprir proibição constitucional de nome legado
+- [x] T059 [P] Corrigir nome do volume de persistência para `patrimonio_data` em `docker-compose.yml` conforme especificado na Constituição
+- [x] T060 Corrigir `DATABASE_URL` no serviço backend em `docker-compose.prod.yml` alterando host de `localhost:5432` para `postgres:5432`
+- [x] T061 [P] Corrigir avisos de linter em `tests/conftest.py` reorganizando imports ou adicionando `# noqa: E402` onde a injeção prévia de variáveis de ambiente for requerida
+- [x] T062 [P] Eliminar imports redundantes `validate_host_ip` e `EquipmentUpdate` em `tests/test_equipment_schemas.py` resolvendo `F811`
+- [x] T063 [P] Renomear variável de iteração ambígua `l` para `line` em `tests/test_spreadsheet_exporter.py` resolvendo `E741`
+- [x] T064 [P] Criar suíte de testes unitários em `frontend/src/__tests__/ErrorBoundary.test.tsx` cobrindo renderização padrão, captura de erros e fallback visual do `frontend/src/components/ErrorBoundary.tsx`
+- [x] T065 [P] Criar suíte de testes em `frontend/src/__tests__/errorUtils.test.ts` cobrindo todas as ramificações de erro Axios e mensagens genéricas em `frontend/src/utils/errorUtils.ts`
+- [x] T066 [P] Adicionar casos de testes em `frontend/src/__tests__/EquipmentDetailPage.test.tsx` para cobrir branches residuais (linhas 978, 1050, 1052 e condicionais de renderização)
+- [x] T067 [P] Adicionar casos de testes em `frontend/src/__tests__/EquipmentPage.test.tsx` para cobrir branches residuais de paginação e filtros (linhas 502, 518, 520)
+- [x] T068 [P] Adicionar casos de testes em `frontend/src/__tests__/ImportPage.test.tsx` para cobrir ramificações de importação e processamento (linhas 76, 368-378, 386)
+- [x] T069 Validar suíte completa de qualidade executando `uv run ruff check .`, `PYTHONPATH=. uv run pytest --cov=src --cov-branch --cov-fail-under=100`, e `npm run test` garantindo 100% de cobertura de linhas e branches em todo o código executável
+
+---
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

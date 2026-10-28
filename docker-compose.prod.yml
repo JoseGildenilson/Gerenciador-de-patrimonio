@@ -1,16 +1,16 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: internal_management_postgres_prod
+    container_name: patrimonio_postgres_prod
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-internal_management}
+      POSTGRES_DB: ${POSTGRES_DB:-patrimonio_db}
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-internal_management}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-patrimonio_db}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -26,17 +26,17 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - internal-net
+      - patrimonio-net
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    container_name: internal_management_backend_prod
+    container_name: patrimonio_backend_prod
     restart: always
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/internal_management}
+      DATABASE_URL: ${PROD_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-patrimonio_db}}
       SECRET_KEY: "${SECRET_KEY:?ERRO CRITICO - A variavel SECRET_KEY precisa ser configurada obrigatoriamente no arquivo .env para execucao em producao.}"
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-1}
@@ -61,14 +61,14 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - internal-net
+      - patrimonio-net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
-    container_name: internal_management_frontend_prod
+    container_name: patrimonio_frontend_prod
     restart: always
     ports:
       - "${FRONTEND_PROD_PORT:-3000}:8080"
@@ -86,13 +86,13 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - internal-net
+      - patrimonio-net
 
 volumes:
   postgres_prod_data:
-    name: internal_management_postgres_prod_data
+    name: patrimonio_postgres_prod_data
 
 networks:
-  internal-net:
-    name: internal_management_net_prod
+  patrimonio-net:
+    name: patrimonio_net_prod
     driver: bridge

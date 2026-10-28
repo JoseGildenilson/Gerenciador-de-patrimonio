@@ -1,6 +1,6 @@
 # Plano de Tarefas: Pipeline de Integração Contínua (CI) com GitHub Actions
 
-Este documento define o plano detalhado de implementação para o pipeline de **Integração Contínua (CI)** com GitHub Actions, mapeando cada requisito da especificação [`spec.md`](file:///home/gil/code/internal_management/spec/features/ci/spec.md) e cumprindo os princípios da [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento define o plano detalhado de implementação para o pipeline de **Integração Contínua (CI)** com GitHub Actions, mapeando cada requisito da especificação [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/ci/spec.md) e cumprindo os princípios da [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 

@@ -16,7 +16,7 @@ Esta especificação define as regras de exclusão de arquivos e diretórios ver
 - **RN-IGN-03 (Testes & Cobertura):** Ignorar caches do pytest (`.pytest_cache/`), arquivos de cobertura (`.coverage`, `.coverage.*`, `htmlcov/`, `coverage/`, `frontend/coverage/`) e relatórios XML/JSON.
 - **RN-IGN-04 (Node.js & Frontend):** Ignorar diretórios de dependências (`node_modules/`, `frontend/node_modules/`), bundles de produção (`dist/`, `frontend/dist/`, `build/`, `frontend/build/`) e caches do bundler (`.vite/`, `.npm/`).
 - **RN-IGN-05 (Segredos & Variáveis de Ambiente):** Ignorar arquivos com credenciais e chaves (`.env`, `.env.*`, `*.pem`, `*.key`), garantindo a preservação explícita do template de exemplo (`!.env.example`).
-- **RN-IGN-06 (Bancos de Dados & Planilhas):** Ignorar bancos de dados locais (`*.db`, `*.sqlite`, `*.sqlite3`, `internal_management.db`) e planilhas de dados (`*.xlsx`, `*.xls`, `*.csv`).
+- **RN-IGN-06 (Bancos de Dados & Planilhas):** Ignorar bancos de dados locais (`*.db`, `*.sqlite`, `*.sqlite3`, `patrimonio.db`) e planilhas de dados (`*.xlsx`, `*.xls`, `*.csv`).
 - **RN-IGN-07 (Logs & Temporários):** Ignorar logs (`*.log`, `npm-debug.log*`, `yarn-debug.log*`, `yarn-error.log*`) e pastas temporárias (`tmp/`, `temp/`).
 - **RN-IGN-08 (IDEs & Sistema Operacional):** Ignorar configurações de editores (`.vscode/`, `.idea/`, `*.swp`, `*.swo`) e metadados de SO (`.DS_Store`, `Thumbs.db`).
 

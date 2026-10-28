@@ -20,6 +20,7 @@ def upgrade() -> None:
     op.add_column("users", sa.Column("name", sa.String(length=255), server_default="Usuário", nullable=False))
     op.add_column("users", sa.Column("password_hash", sa.String(length=255), server_default="", nullable=False))
     op.execute("UPDATE users SET password_hash = hashed_password WHERE hashed_password IS NOT NULL")
+    op.alter_column("users", "hashed_password", nullable=True)
     op.add_column("users", sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
 
     # Update check constraint on users.role to allow administrador
@@ -163,6 +164,7 @@ def downgrade() -> None:
 
     op.drop_constraint("chk_users_role_valid", "users", type_="check")
     op.create_check_constraint("chk_users_role_valid", "users", "role IN ('tecnico', 'colaborador')")
+    op.alter_column("users", "hashed_password", nullable=False)
     op.drop_column("users", "updated_at")
     op.drop_column("users", "password_hash")
     op.drop_column("users", "name")

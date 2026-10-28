@@ -376,7 +376,62 @@ describe('Páginas e Componentes de Equipamentos (Frontend)', () => {
       expect(equipmentApi.createEquipment).toHaveBeenCalled();
     });
   });
+
+  it('renderiza itens com equipment_type, sector e location como objetos (linhas 502, 518, 520)', async () => {
+    (authApi.getMe as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1,
+      email: 'tecnico@empresa.com',
+      role: 'tecnico',
+      is_active: true,
+    });
+    (equipmentApi.getTags as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (equipmentApi.getEquipments as ReturnType<typeof vi.fn>).mockResolvedValue({
+      items: [
+        {
+          id: 101,
+          serial_number: 'SN-OBJ-1',
+          patrimony_number: 'PAT-OBJ-1',
+          description: 'Item com Tipo e Setor Objetos',
+          equipment_type: { name: 'Tipo Customizado Objeto' },
+          sector: { name: 'Setor Corporativo Objeto' },
+          location: 'Sala 1',
+          status: 'Disponível',
+          created_at: '2026-08-13T00:00:00Z',
+        },
+        {
+          id: 102,
+          serial_number: 'SN-OBJ-2',
+          patrimony_number: 'PAT-OBJ-2',
+          description: 'Item com Local Objeto',
+          equipment_type: 'Desktop',
+          sector: null,
+          location: { name: 'Laboratório Central Objeto' },
+          status: 'Em uso',
+          created_at: '2026-08-13T00:00:00Z',
+        },
+      ],
+      total: 2,
+      page: 1,
+      limit: 25,
+      pages: 1,
+    });
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/equipamentos']}>
+          <Routes>
+            <Route path="/equipamentos" element={<EquipmentListPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    expect(await screen.findByText('Tipo Customizado Objeto')).toBeInTheDocument();
+    expect(screen.getByText('Setor Corporativo Objeto')).toBeInTheDocument();
+    expect(screen.getByText('Laboratório Central Objeto')).toBeInTheDocument();
+  });
 });
+
 
 
 

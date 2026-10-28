@@ -1,6 +1,6 @@
 # Plano de Tarefas: Documentação do Projeto (README.md)
 
-Este documento define o plano detalhado de tarefas para a criação da documentação completa do projeto no `README.md`, atendendo aos requisitos da especificação [`spec.md`](file:///home/gil/code/internal_management/spec/features/documentacao/spec.md) e da [`constituicao.md`](file:///home/gil/code/internal_management/spec/constituicao.md).
+Este documento define o plano detalhado de tarefas para a criação da documentação completa do projeto no `README.md`, atendendo aos requisitos da especificação [`spec.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/features/documentacao/spec.md) e da [`constituicao.md`](file:///home/gil/Projects/Gerenciador%20de%20patrimonio/spec/constituicao.md).
 
 ---
 
