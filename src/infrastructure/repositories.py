@@ -4,20 +4,11 @@ Nota: Em cumprimento à Constituição, os repositórios NÃO executam commit ou
 O controle de transação é feito no nível do caso de uso ou rota HTTP.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Type, TypeVar
-from sqlalchemy import select, update, func, or_, desc, asc
+from datetime import datetime, timezone
+from sqlalchemy import select, func, or_, desc, asc
 from sqlalchemy.orm import Session, selectinload
 from src.domain.models import (
     User,
-    LoginAttempt,
-    Equipment,
-    EquipmentType,
-    Sector,
-    EquipmentStatus,
-    MaintenanceType,
-    EquipmentMovement,
-    EquipmentMaintenance,
     Location,
     Category,
     Asset,
@@ -25,114 +16,6 @@ from src.domain.models import (
     AssetMovement,
     AssetMaintenance,
 )
-
-T = TypeVar("T", EquipmentType, Sector, EquipmentStatus, MaintenanceType)
-
-
-class CatalogsRepository:
-    """Repositório genérico para gerenciamento dos 4 catálogos estruturais."""
-
-    def __init__(self, db: Session):
-        self.db = db
-
-    def list_active(self, model_class: Type[T]) -> list[T]:
-        """Retorna itens ativos do catálogo (deleted_at IS NULL) ordenados por nome."""
-        stmt = (
-            select(model_class)
-            .where(model_class.deleted_at.is_(None))
-            .order_by(asc(model_class.name))
-        )
-        return list(self.db.execute(stmt).scalars().all())
-
-    def list_all(self, model_class: Type[T]) -> list[T]:
-        """Retorna todos os itens do catálogo, incluindo logicamente excluídos."""
-        stmt = select(model_class).order_by(asc(model_class.name))
-        return list(self.db.execute(stmt).scalars().all())
-
-    def get_by_id(self, model_class: Type[T], item_id: int) -> T | None:
-        """Busca item por ID."""
-        stmt = select(model_class).where(model_class.id == item_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_by_name_lower(self, model_class: Type[T], name: str) -> T | None:
-        """Busca item do catálogo de forma case-insensitive."""
-        stmt = select(model_class).where(func.lower(model_class.name) == name.strip().lower())
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def create(self, item: T) -> T:
-        """Adiciona novo item do catálogo à sessão (sem commit)."""
-        self.db.add(item)
-        return item
-
-    def update(self, item: T, new_name: str) -> T:
-        """Atualiza o nome de um item de catálogo."""
-        item.name = new_name.strip()
-        return item
-
-    def soft_delete(self, item: T) -> T:
-        """Marca o item como excluído logicamente."""
-        item.deleted_at = datetime.now(timezone.utc)
-        return item
-
-    def restore(self, item: T) -> T:
-        """Restaura item logicamente excluído."""
-        item.deleted_at = None
-        return item
-
-
-class DashboardRepository:
-    """Repositório para consulta de métricas patrimoniais do Dashboard."""
-
-    def __init__(self, db: Session):
-        self.db = db
-
-    def get_metrics(self) -> dict:
-        """Calcula os indicadores patrimoniais para equipamentos ativos (deleted_at IS NULL)."""
-        # Total de equipamentos ativos
-        total_stmt = select(func.count(Equipment.id)).where(Equipment.deleted_at.is_(None))
-        equipments_total = self.db.execute(total_stmt).scalar() or 0
-
-        # Contagem por Situação
-        status_stmt = (
-            select(EquipmentStatus.name, func.count(Equipment.id))
-            .join(Equipment, Equipment.status_id == EquipmentStatus.id)
-            .where(Equipment.deleted_at.is_(None))
-            .group_by(EquipmentStatus.name)
-        )
-        by_status = dict(self.db.execute(status_stmt).all())
-
-        # Contagem por Tipo
-        type_stmt = (
-            select(EquipmentType.name, func.count(Equipment.id))
-            .join(Equipment, Equipment.equipment_type_id == EquipmentType.id)
-            .where(Equipment.deleted_at.is_(None))
-            .group_by(EquipmentType.name)
-        )
-        by_type = dict(self.db.execute(type_stmt).all())
-
-        # Contagem por Setor
-        sector_stmt = (
-            select(Sector.name, func.count(Equipment.id))
-            .join(Equipment, Equipment.sector_id == Sector.id)
-            .where(Equipment.deleted_at.is_(None))
-            .group_by(Sector.name)
-        )
-        by_sector = dict(self.db.execute(sector_stmt).all())
-
-        # Contagens rápidas
-        equipments_in_maintenance = by_status.get("Em manutenção", 0)
-        equipments_in_use = by_status.get("Em uso", 0)
-        equipments_idle = by_status.get("Ocioso", 0)
-
-        return {
-            "equipments_total": equipments_total,
-            "equipments_in_maintenance": equipments_in_maintenance,
-            "equipments_in_use": equipments_in_use,
-            "equipments_idle": equipments_idle,
-            "by_status": by_status,
-            "by_type": by_type,
-            "by_sector": by_sector,
-        }
 
 
 class UserRepository:
@@ -171,472 +54,61 @@ class UserRepository:
         return user
 
 
-class LoginAttemptRepository:
-    """Repositório de registro e contagem de tentativas de login por IP e e-mail."""
+class DashboardRepository:
+    """Repositório para agregação de indicadores e métricas patrimoniais."""
 
     def __init__(self, db: Session):
         self.db = db
 
-    def count_recent_failed_attempts(self, ip_address: str, window_minutes: int = 15) -> int:
-        """Conta tentativas malsucedidas de um IP na janela de tempo especificada."""
-        cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
-        stmt = select(func.count(LoginAttempt.id)).where(
-            LoginAttempt.ip_address == ip_address,
-            LoginAttempt.success.is_(False),
-            LoginAttempt.attempted_at >= cutoff_time,
+    def get_metrics(self) -> dict:
+        total_stmt = select(func.count(Asset.id)).where(Asset.deleted_at.is_(None))
+        assets_total = self.db.execute(total_stmt).scalar() or 0
+
+        status_stmt = (
+            select(Asset.status, func.count(Asset.id))
+            .where(Asset.deleted_at.is_(None))
+            .group_by(Asset.status)
         )
-        count = self.db.execute(stmt).scalar()
-        return count or 0
+        by_status = dict(self.db.execute(status_stmt).all())
 
-    def count_recent_failed_attempts_by_email(self, email: str, window_minutes: int = 15) -> int:
-        """Conta tentativas malsucedidas de um email na janela de tempo especificada (ISSUE-007)."""
-        if not email:
-            return 0
-        cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
-        stmt = select(func.count(LoginAttempt.id)).where(
-            func.lower(LoginAttempt.email_attempted) == email.lower().strip(),
-            LoginAttempt.success.is_(False),
-            LoginAttempt.attempted_at >= cutoff_time,
+        cat_stmt = (
+            select(Category.name, func.count(Asset.id))
+            .join(Category, Asset.category_id == Category.id)
+            .where(Asset.deleted_at.is_(None))
+            .group_by(Category.name)
         )
-        count = self.db.execute(stmt).scalar()
-        return count or 0
+        by_type = dict(self.db.execute(cat_stmt).all())
 
-    def record_attempt(self, ip_address: str, email_attempted: str, success: bool) -> LoginAttempt:
-        """Registra uma nova tentativa de login com IP e email informado (sem commit)."""
-        attempt = LoginAttempt(
-            ip_address=ip_address,
-            email_attempted=email_attempted,
-            success=success,
-            attempted_at=datetime.now(timezone.utc),
+        loc_stmt = (
+            select(Location.sector, func.count(Asset.id))
+            .join(Location, Asset.location_id == Location.id)
+            .where(Asset.deleted_at.is_(None))
+            .group_by(Location.sector)
         )
-        self.db.add(attempt)
-        return attempt
+        by_sector = dict(self.db.execute(loc_stmt).all())
 
+        assets_in_maintenance = by_status.get("em_manutencao", 0)
+        assets_in_use = by_status.get("em_uso", 0)
+        assets_available = by_status.get("disponivel", 0)
+        assets_decommissioned = by_status.get("baixado", 0)
 
-class EquipmentRepository:
-    """Repositório de persistência e consulta da entidade Equipment."""
+        return {
+            "assets_total": assets_total,
+            "assets_in_maintenance": assets_in_maintenance,
+            "assets_in_use": assets_in_use,
+            "assets_available": assets_available,
+            "assets_decommissioned": assets_decommissioned,
+            "equipments_total": assets_total,
+            "equipments_in_maintenance": assets_in_maintenance,
+            "equipments_in_use": assets_in_use,
+            "equipments_idle": assets_available,
+            "by_status": by_status,
+            "by_type": by_type,
+            "by_sector": by_sector,
+            "by_category": by_type,
+            "by_location": by_sector,
+        }
 
-    def __init__(self, db: Session):
-        self.db = db
-
-    def get_by_id(self, equipment_id: int, include_deleted: bool = False) -> Equipment | None:
-        """Busca equipamento por ID com relacionamentos carregados."""
-        stmt = (
-            select(Equipment)
-            .options(
-                selectinload(Equipment.equipment_type),
-                selectinload(Equipment.sector),
-                selectinload(Equipment.status),
-                selectinload(Equipment.movements).selectinload(EquipmentMovement.origin_sector),
-                selectinload(Equipment.movements).selectinload(
-                    EquipmentMovement.destination_sector
-                ),
-                selectinload(Equipment.maintenances).selectinload(
-                    EquipmentMaintenance.maintenance_type
-                ),
-            )
-            .where(Equipment.id == equipment_id)
-        )
-        if not include_deleted:
-            stmt = stmt.where(Equipment.deleted_at.is_(None))
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_by_patrimony_number(
-        self, patrimony_number: str, exclude_id: int | None = None, include_deleted: bool = True
-    ) -> Equipment | None:
-        """Busca equipamento por Nº de Patrimônio (case-insensitive permanente, inclusive excluídos por padrão)."""
-        if not patrimony_number or not str(patrimony_number).strip():
-            return None
-        stmt = select(Equipment).where(
-            func.lower(Equipment.patrimony_number) == str(patrimony_number).strip().lower()
-        )
-        if not include_deleted:
-            stmt = stmt.where(Equipment.deleted_at.is_(None))
-        if exclude_id is not None:
-            stmt = stmt.where(Equipment.id != exclude_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_by_serial_number(
-        self, serial_number: str, exclude_id: int | None = None, include_deleted: bool = True
-    ) -> Equipment | None:
-        """Busca equipamento por Nº de Série (case-insensitive permanente onde não nulo)."""
-        if not serial_number or not str(serial_number).strip():
-            return None
-        stmt = select(Equipment).where(
-            func.lower(Equipment.serial_number) == str(serial_number).strip().lower()
-        )
-        if not include_deleted:
-            stmt = stmt.where(Equipment.deleted_at.is_(None))
-        if exclude_id is not None:
-            stmt = stmt.where(Equipment.id != exclude_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_active_by_hostname(
-        self, hostname: str, exclude_id: int | None = None
-    ) -> Equipment | None:
-        """Busca por hostname ativo (case-insensitive apenas entre bens não excluídos)."""
-        if not hostname or not str(hostname).strip():
-            return None
-        stmt = select(Equipment).where(
-            Equipment.deleted_at.is_(None),
-            func.lower(Equipment.hostname) == str(hostname).strip().lower(),
-        )
-        if exclude_id is not None:
-            stmt = stmt.where(Equipment.id != exclude_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_by_hostname(
-        self, hostname: str | None, exclude_id: int | None = None
-    ) -> Equipment | None:
-        """Busca equipamento ativo por Hostname (compatibilidade)."""
-        if not hostname or not str(hostname).strip():
-            return None
-        return self.get_active_by_hostname(str(hostname), exclude_id=exclude_id)
-
-    def get_active_by_ip(self, ip_address: str, exclude_id: int | None = None) -> Equipment | None:
-        """Busca por IP ativo (apenas entre bens não excluídos)."""
-        if not ip_address or not ip_address.strip():
-            return None
-        stmt = select(Equipment).where(
-            Equipment.deleted_at.is_(None),
-            Equipment.ip_address == ip_address.strip(),
-        )
-        if exclude_id is not None:
-            stmt = stmt.where(Equipment.id != exclude_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_active_by_mac(
-        self, mac_address: str, exclude_id: int | None = None
-    ) -> Equipment | None:
-        """Busca por MAC ativo (apenas entre bens não excluídos)."""
-        if not mac_address or not mac_address.strip():
-            return None
-        stmt = select(Equipment).where(
-            Equipment.deleted_at.is_(None),
-            Equipment.mac_address == mac_address.strip(),
-        )
-        if exclude_id is not None:
-            stmt = stmt.where(Equipment.id != exclude_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_active_by_printer_identifier(
-        self, printer_identifier: str, exclude_id: int | None = None
-    ) -> Equipment | None:
-        """Busca por identificador de impressora ativo (case-insensitive apenas entre ativos)."""
-        if not printer_identifier or not printer_identifier.strip():
-            return None
-        stmt = select(Equipment).where(
-            Equipment.deleted_at.is_(None),
-            func.lower(Equipment.printer_identifier) == printer_identifier.strip().lower(),
-        )
-        if exclude_id is not None:
-            stmt = stmt.where(Equipment.id != exclude_id)
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def check_restoration_conflicts(self, equipment: Equipment) -> list[str]:
-        """Verifica se algum identificador único de bem ativo colide com o bem a ser restaurado."""
-        conflicts = []
-        if equipment.hostname:
-            c = self.get_active_by_hostname(equipment.hostname, exclude_id=equipment.id)
-            if c:
-                conflicts.append(
-                    f"Hostname '{equipment.hostname}' já está em uso pelo equipamento ativo ID {c.id}."
-                )
-        if equipment.ip_address:
-            c = self.get_active_by_ip(str(equipment.ip_address), exclude_id=equipment.id)
-            if c:
-                conflicts.append(
-                    f"Endereço IP '{equipment.ip_address}' já está em uso pelo equipamento ativo ID {c.id}."
-                )
-        if equipment.mac_address:
-            c = self.get_active_by_mac(str(equipment.mac_address), exclude_id=equipment.id)
-            if c:
-                conflicts.append(
-                    f"Endereço MAC '{equipment.mac_address}' já está em uso pelo equipamento ativo ID {c.id}."
-                )
-        if equipment.printer_identifier:
-            c = self.get_active_by_printer_identifier(
-                equipment.printer_identifier, exclude_id=equipment.id
-            )
-            if c:
-                conflicts.append(
-                    f"Identificador de impressora '{equipment.printer_identifier}' já está em uso pelo equipamento ativo ID {c.id}."
-                )
-        return conflicts
-
-    def _build_filter_query(
-        self,
-        equipment_type_ids: list[int] | int | None = None,
-        sector_ids: list[int] | int | None = None,
-        status_ids: list[int] | int | None = None,
-        patrimony_number: list[str] | str | None = None,
-        serial_number: list[str] | str | None = None,
-        search: str | None = None,
-        include_deleted: bool = False,
-    ):
-        query = select(Equipment).options(
-            selectinload(Equipment.equipment_type),
-            selectinload(Equipment.sector),
-            selectinload(Equipment.status),
-        )
-
-        if not include_deleted:
-            query = query.where(Equipment.deleted_at.is_(None))
-
-        def normalize_int_list(val: list[int] | int | None) -> list[int]:
-            if val is None:
-                return []
-            if isinstance(val, list):
-                return [int(v) for v in val if v is not None]
-            return [int(val)]
-
-        def normalize_str_list(val: list[str] | str | None) -> list[str]:
-            if val is None:
-                return []
-            if isinstance(val, list):
-                return [v.strip() for v in val if v and v.strip()]
-            return [val.strip()] if val and val.strip() else []
-
-        types = normalize_int_list(equipment_type_ids)
-        if types:
-            query = query.where(Equipment.equipment_type_id.in_(types))
-
-        sectors = normalize_int_list(sector_ids)
-        if sectors:
-            query = query.where(Equipment.sector_id.in_(sectors))
-
-        statuses = normalize_int_list(status_ids)
-        if statuses:
-            query = query.where(Equipment.status_id.in_(statuses))
-
-        patrimonies = normalize_str_list(patrimony_number)
-        if patrimonies:
-            query = query.where(
-                or_(*[Equipment.patrimony_number.ilike(f"%{p}%") for p in patrimonies])
-            )
-
-        serials = normalize_str_list(serial_number)
-        if serials:
-            query = query.where(or_(*[Equipment.serial_number.ilike(f"%{s}%") for s in serials]))
-
-        if search and search.strip():
-            pat = f"%{search.strip()}%"
-            query = query.where(
-                or_(
-                    Equipment.description.ilike(pat),
-                    Equipment.brand.ilike(pat),
-                    Equipment.model.ilike(pat),
-                    Equipment.patrimony_number.ilike(pat),
-                    Equipment.serial_number.ilike(pat),
-                    Equipment.hostname.ilike(pat),
-                    Equipment.printer_identifier.ilike(pat),
-                    Equipment.notes.ilike(pat),
-                )
-            )
-
-        return query
-
-    def list_paginated_and_filtered(
-        self,
-        page: int = 1,
-        limit: int = 25,
-        equipment_type_ids: list[int] | int | None = None,
-        sector_ids: list[int] | int | None = None,
-        status_ids: list[int] | int | None = None,
-        patrimony_number: list[str] | str | None = None,
-        serial_number: list[str] | str | None = None,
-        search: str | None = None,
-        sort_by: str = "created_at",
-        sort_dir: str = "desc",
-        include_deleted: bool = False,
-    ) -> tuple[list[Equipment], int]:
-        """Retorna equipamentos paginados e filtrados com contagem total."""
-        query = self._build_filter_query(
-            equipment_type_ids=equipment_type_ids,
-            sector_ids=sector_ids,
-            status_ids=status_ids,
-            patrimony_number=patrimony_number,
-            serial_number=serial_number,
-            search=search,
-            include_deleted=include_deleted,
-        )
-
-        count_stmt = select(func.count()).select_from(query.subquery())
-        total = self.db.execute(count_stmt).scalar() or 0
-
-        sort_column = getattr(Equipment, sort_by, Equipment.created_at)
-        if sort_dir.lower() == "asc":
-            query = query.order_by(asc(sort_column))
-        else:
-            query = query.order_by(desc(sort_column))
-
-        offset = (page - 1) * limit
-        query = query.offset(offset).limit(limit)
-
-        items = list(self.db.execute(query).scalars().all())
-        return items, total
-
-    def list_all_filtered(
-        self,
-        equipment_type_ids: list[int] | int | None = None,
-        sector_ids: list[int] | int | None = None,
-        status_ids: list[int] | int | None = None,
-        patrimony_number: list[str] | str | None = None,
-        serial_number: list[str] | str | None = None,
-        search: str | None = None,
-        sort_by: str = "created_at",
-        sort_dir: str = "desc",
-        include_deleted: bool = False,
-    ) -> list[Equipment]:
-        """Retorna todos os equipamentos filtrados sem paginação com relacionamentos e manutenções."""
-        query = self._build_filter_query(
-            equipment_type_ids=equipment_type_ids,
-            sector_ids=sector_ids,
-            status_ids=status_ids,
-            patrimony_number=patrimony_number,
-            serial_number=serial_number,
-            search=search,
-            include_deleted=include_deleted,
-        ).options(
-            selectinload(Equipment.maintenances).selectinload(
-                EquipmentMaintenance.maintenance_type
-            ),
-            selectinload(Equipment.movements),
-        )
-
-        sort_column = getattr(Equipment, sort_by, Equipment.created_at)
-        if sort_dir.lower() == "asc":
-            query = query.order_by(asc(sort_column))
-        else:
-            query = query.order_by(desc(sort_column))
-
-        return list(self.db.execute(query).scalars().all())
-
-    def create(self, equipment: Equipment) -> Equipment:
-        """Adiciona novo equipamento à sessão."""
-        self.db.add(equipment)
-        return equipment
-
-    def soft_delete(self, equipment: Equipment) -> Equipment:
-        """Aplica soft delete no equipamento."""
-        equipment.deleted_at = datetime.now(timezone.utc)
-        return equipment
-
-    def restore(self, equipment: Equipment) -> Equipment:
-        """Restaura equipamento logicamente excluído."""
-        equipment.deleted_at = None
-        return equipment
-
-    def get_distinct_values_by_prefix(
-        self,
-        field_name: str,
-        prefix: str,
-        limit: int = 10,
-    ) -> list[str]:
-        """Retorna valores distintos ordenados filtrados por prefixo em bens ativos."""
-        column = getattr(Equipment, field_name, None)
-        if column is None:
-            return []
-
-        stmt = (
-            select(column)
-            .where(
-                Equipment.deleted_at.is_(None),
-                column.is_not(None),
-                column.ilike(f"{prefix}%"),
-            )
-            .distinct()
-            .order_by(asc(column))
-            .limit(limit)
-        )
-        results = self.db.execute(stmt).scalars().all()
-        return [str(r) for r in results if r]
-
-
-class EquipmentMovementRepository:
-    """Repositório de histórico de transferências/movimentações."""
-
-    def __init__(self, db: Session):
-        self.db = db
-
-    def create(self, movement: EquipmentMovement) -> EquipmentMovement:
-        """Adiciona movimentação à sessão."""
-        self.db.add(movement)
-        return movement
-
-    def get_by_id(self, movement_id: int) -> EquipmentMovement | None:
-        """Busca movimentação por ID com setores carregados."""
-        stmt = (
-            select(EquipmentMovement)
-            .options(
-                selectinload(EquipmentMovement.origin_sector),
-                selectinload(EquipmentMovement.destination_sector),
-                selectinload(EquipmentMovement.performed_by_user),
-            )
-            .where(EquipmentMovement.id == movement_id)
-        )
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_ordered_movements(self, equipment_id: int) -> list[EquipmentMovement]:
-        """Retorna o histórico cronológico de transferências ordenado estritamente por (movement_date ASC, id ASC)."""
-        stmt = (
-            select(EquipmentMovement)
-            .options(
-                selectinload(EquipmentMovement.origin_sector),
-                selectinload(EquipmentMovement.destination_sector),
-            )
-            .where(EquipmentMovement.equipment_id == equipment_id)
-            .order_by(asc(EquipmentMovement.movement_date), asc(EquipmentMovement.id))
-        )
-        return list(self.db.execute(stmt).scalars().all())
-
-
-class EquipmentMaintenanceRepository:
-    """Repositório de histórico e ciclo de vida de manutenção."""
-
-    def __init__(self, db: Session):
-        self.db = db
-
-    def create(self, maintenance: EquipmentMaintenance) -> EquipmentMaintenance:
-        """Adiciona nova manutenção à sessão."""
-        self.db.add(maintenance)
-        return maintenance
-
-    def get_by_id(self, maintenance_id: int) -> EquipmentMaintenance | None:
-        """Busca manutenção por ID."""
-        stmt = (
-            select(EquipmentMaintenance)
-            .options(
-                selectinload(EquipmentMaintenance.maintenance_type),
-                selectinload(EquipmentMaintenance.performed_by_user),
-            )
-            .where(EquipmentMaintenance.id == maintenance_id)
-        )
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def get_open_maintenance(self, equipment_id: int) -> EquipmentMaintenance | None:
-        """Retorna a manutenção em andamento (completed_at IS NULL) se existir."""
-        stmt = select(EquipmentMaintenance).where(
-            EquipmentMaintenance.equipment_id == equipment_id,
-            EquipmentMaintenance.completed_at.is_(None),
-        )
-        return self.db.execute(stmt).scalar_one_or_none()
-
-    def list_by_equipment(self, equipment_id: int) -> list[EquipmentMaintenance]:
-        """Retorna manutenções do equipamento ordenadas da mais recente para a mais antiga."""
-        stmt = (
-            select(EquipmentMaintenance)
-            .options(
-                selectinload(EquipmentMaintenance.maintenance_type),
-                selectinload(EquipmentMaintenance.performed_by_user),
-            )
-            .where(EquipmentMaintenance.equipment_id == equipment_id)
-            .order_by(desc(EquipmentMaintenance.started_at))
-        )
-        return list(self.db.execute(stmt).scalars().all())
-
-
-# --- Repositórios do Modelo SisPatrimonio ---
 
 
 class CategoryRepository:

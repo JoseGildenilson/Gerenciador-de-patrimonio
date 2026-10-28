@@ -1,13 +1,55 @@
-"""Caso de uso para autenticação de usuário com controle de rate limit e auditoria."""
+"""Caso de uso para autenticação de usuário com controle de rate limit e auditoria em memória."""
 
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 import threading
 from sqlalchemy.orm import Session
 from src.core.security import verify_password, create_access_token, create_refresh_token
 from src.domain.models import User
-from src.infrastructure.repositories import UserRepository, LoginAttemptRepository
+from src.infrastructure.repositories import UserRepository
 
 _rate_limit_lock = threading.Lock()
+_failed_ip_attempts: dict[str, list[datetime]] = {}
+_failed_email_attempts: dict[str, list[datetime]] = {}
+
+
+def _cleanup_and_count_attempts(attempts_map: dict[str, list[datetime]], key: str, window_minutes: int = 15) -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+    if key not in attempts_map:
+        return 0
+    # Mantém apenas tentativas dentro da janela
+    valid_attempts = [ts for ts in attempts_map[key] if ts >= cutoff]
+    attempts_map[key] = valid_attempts
+    return len(valid_attempts)
+
+
+def _record_failed_attempt(attempts_map: dict[str, list[datetime]], key: str) -> None:
+    now = datetime.now(timezone.utc)
+    if key not in attempts_map:
+        attempts_map[key] = []
+    attempts_map[key].append(now)
+
+
+def _record_success(
+    ip: str,
+    email: str,
+    ip_map: dict[str, list[datetime]] | None = None,
+    email_map: dict[str, list[datetime]] | None = None,
+) -> None:
+    target_ip_map = _failed_ip_attempts if ip_map is None else ip_map
+    target_email_map = _failed_email_attempts if email_map is None else email_map
+    if ip in target_ip_map:
+        target_ip_map[ip] = []
+    normalized_email = email.strip().lower()
+    if normalized_email in target_email_map:
+        target_email_map[normalized_email] = []
+
+
+def reset_rate_limits() -> None:
+    """Limpa todas as tentativas registradas em memória (usado para isolamento entre testes)."""
+    with _rate_limit_lock:
+        _failed_ip_attempts.clear()
+        _failed_email_attempts.clear()
 
 
 class RateLimitExceededException(Exception):
@@ -30,35 +72,23 @@ class InvalidCredentialsException(Exception):
 
 
 class AuthenticateUserUseCase:
-    """Caso de uso de autenticação de usuário com auditoria por email_attempted e IP."""
+    """Caso de uso de autenticação de usuário com controle de taxa e hash seguro de senha."""
 
     def __init__(self, db: Session):
         self.db = db
         self.user_repo = UserRepository(db)
-        self.login_attempt_repo = LoginAttemptRepository(db)
 
     def execute(self, email: str, password: str, ip_address: str) -> Dict[str, Any]:
-        """Executa validação, rate limiting e auditoria no login.
+        """Executa validação, rate limiting e autenticação no login."""
+        normalized_email = email.strip().lower()
 
-        Em conformidade com a Constituição e RN-REF-03 / RN-REF-04:
-        - Bloqueia IP com 10 ou mais falhas nos últimos 15 minutos (ISSUE-006 / ISSUE-007).
-        - Bloqueia conta com 5 ou mais falhas nos últimos 15 minutos (ISSUE-007).
-        - Protege contra condições de corrida com trava sincronizada de execução (ISSUE-006).
-        - Busca usuário de forma case-insensitive e valida deleted_at IS NULL e is_active.
-        - Grava email_attempted e ip_address na tabela login_attempts sem armazenar a senha.
-        - Controla transação unificada.
-        """
         with _rate_limit_lock:
             # 1. Verifica taxa de tentativas malsucedidas por IP e por conta
-            failed_ip_count = self.login_attempt_repo.count_recent_failed_attempts(
-                ip_address, window_minutes=15
-            )
+            failed_ip_count = _cleanup_and_count_attempts(_failed_ip_attempts, ip_address, window_minutes=15)
             if failed_ip_count >= 10:
                 raise RateLimitExceededException()
 
-            failed_email_count = self.login_attempt_repo.count_recent_failed_attempts_by_email(
-                email, window_minutes=15
-            )
+            failed_email_count = _cleanup_and_count_attempts(_failed_email_attempts, normalized_email, window_minutes=15)
             if failed_email_count >= 5:
                 raise RateLimitExceededException(
                     "Acesso temporariamente bloqueado por motivos de segurança devido ao excesso de tentativas malsucedidas."
@@ -72,28 +102,19 @@ class AuthenticateUserUseCase:
             user is not None
             and user.is_active
             and user.deleted_at is None
-            and verify_password(password, user.hashed_password)
+            and verify_password(password, user.password_hash)
         )
 
         if not is_valid:
-            # Registra falha de tentativa para auditoria sem expor credenciais
-            self.login_attempt_repo.record_attempt(
-                ip_address=ip_address,
-                email_attempted=email,
-                success=False,
-            )
-            self.db.commit()
+            with _rate_limit_lock:
+                _record_failed_attempt(_failed_ip_attempts, ip_address)
+                _record_failed_attempt(_failed_email_attempts, normalized_email)
             raise InvalidCredentialsException()
 
-        # 4. Registra sucesso da tentativa de login
-        self.login_attempt_repo.record_attempt(
-            ip_address=ip_address,
-            email_attempted=email,
-            success=True,
-        )
-        self.db.commit()
+        with _rate_limit_lock:
+            _record_success(ip_address, email)
 
-        # 5. Gera tokens JWT
+        # 4. Gera tokens JWT
         token_data = {
             "sub": str(user.id),
             "email": user.email,

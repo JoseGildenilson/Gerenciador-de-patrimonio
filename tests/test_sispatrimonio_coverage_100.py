@@ -399,3 +399,143 @@ def test_final_branch_coverage_completions(db_session: Session, create_test_user
         moved_by_id=user.id,
     )
     assert mov.dest_location_id == loc.id
+
+
+@pytest.mark.anyio
+async def test_auth_routes_coverage_revoked_and_logout(client, create_test_user):
+    user = create_test_user(email="logout_cov@empresa.com", password="Password123!")
+    from src.core.security import create_access_token, create_refresh_token, revoke_token
+
+    access_tok = create_access_token(
+        {"sub": str(user.id), "email": user.email, "role": user.role}
+    )
+    refresh_tok = create_refresh_token({"sub": str(user.id)})
+
+    # Teste de refresh com token já revogado (linha 156)
+    revoke_token(refresh_tok)
+    client.cookies.set("refresh_token", refresh_tok)
+    resp = await client.post("/api/v1/auth/refresh")
+    assert resp.status_code == 401
+    assert "revogado" in resp.json()["detail"]
+
+    # Teste de logout com Authorization Header e refresh cookie (linhas 214, 218, 220)
+    client.cookies.clear()
+    client.cookies.set("refresh_token", refresh_tok)
+    logout_resp = await client.post(
+        "/api/v1/auth/logout",
+        headers={"Authorization": f"Bearer {access_tok}"},
+    )
+    assert logout_resp.status_code == 200
+
+    # Teste de logout com access_token em cookie (branch 211->215)
+    client.cookies.set("access_token", access_tok)
+    logout_resp2 = await client.post("/api/v1/auth/logout")
+    assert logout_resp2.status_code == 200
+
+
+def test_security_and_repo_edge_branches(db_session: Session, monkeypatch):
+    from src.core.security import revoke_token, is_token_revoked, decode_token, create_access_token
+    from src.infrastructure.repositories import UserRepository
+
+    # Linha 24->exit e 31
+    revoke_token("")
+    assert is_token_revoked("") is True
+    assert is_token_revoked(None) is True
+
+    # Linhas 136-137: decode_token quando jwt.decode falha (fallback payload)
+    import jwt
+
+    valid_token = create_access_token({"sub": "user_fallback_123"})
+    monkeypatch.setattr(
+        jwt,
+        "decode",
+        lambda *args, **kwargs: (_ for _ in ()).throw(jwt.PyJWTError("Simulated decode failure")),
+    )
+    decoded = decode_token(valid_token)
+    assert decoded["sub"] == "user_fallback_123"
+
+    # Repositório branch 30->32
+    user_repo = UserRepository(db_session)
+    u = User(
+        email="del_user@teste.com",
+        role="tecnico",
+        password_hash="hash",
+        deleted_at=datetime.now(timezone.utc),
+    )
+    user_repo.create(u)
+    db_session.flush()
+    assert user_repo.get_by_email("del_user@teste.com", include_deleted=True) is not None
+    assert user_repo.get_by_email("del_user@teste.com", include_deleted=False) is None
+
+    # AuthenticateUserUseCase linha 45: _record_success limpa email em failed_email_attempts
+    from src.use_cases.authenticate_user import (
+        _record_failed_attempt,
+        _record_success,
+        _cleanup_and_count_attempts,
+    )
+
+    email_map = {}
+    _record_failed_attempt(email_map, "test@clean.com")
+    assert _cleanup_and_count_attempts(email_map, "test@clean.com") == 1
+    _record_success("1.2.3.4", "test@clean.com", email_map=email_map)
+    assert _cleanup_and_count_attempts(email_map, "test@clean.com") == 0
+
+
+def test_import_spreadsheet_remaining_branches(db_session: Session, monkeypatch):
+    from src.use_cases.import_spreadsheet_use_cases import ExecuteSpreadsheetImportUseCase
+    from src.infrastructure.spreadsheet_parser import ParsedSpreadsheet, ParsedSpreadsheetRow
+
+    cat_repo = CategoryRepository(db_session)
+    loc_repo = LocationRepository(db_session)
+    asset_repo = AssetRepository(db_session)
+
+    cat = Category(name="Geral")
+    cat_repo.create(cat)
+    loc = Location(building="Prédio Central", floor="1º Andar", sector="Recepcao")
+    loc_repo.create(loc)
+    db_session.flush()
+
+    asset = Asset(
+        patrimony_number="PAT-MOB-01",
+        description="Mesa de Escritorio",
+        category_id=cat.id,
+        location_id=loc.id,
+        brand="Kappesberg",
+        model="Original",
+        status="disponivel",
+    )
+    asset_repo.create(asset)
+    db_session.flush()
+
+    # Linha com status None (branch 136->145) e description, brand, model None ao atualizar (branch 166->168)
+    mock_parsed = ParsedSpreadsheet(
+        filename="mob.xlsx",
+        headers=["TIPO"],
+        detected_sheet="Planilha",
+        rows=[
+            ParsedSpreadsheetRow(
+                row_number=1,
+                equipment_type="Geral",
+                location="Recepcao",
+                status=None,
+                description=None,
+                patrimony_number="PAT-MOB-01",
+                serial_number=None,
+                brand=None,
+                model=None,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "src.use_cases.import_spreadsheet_use_cases.parse_spreadsheet",
+        lambda *args, **kwargs: mock_parsed,
+    )
+
+    uc = ExecuteSpreadsheetImportUseCase(db_session)
+    res = uc.execute(b"dummy", "mob.xlsx")
+    assert res.updated_count == 1
+    db_session.refresh(asset)
+    assert asset.description == "Mesa de Escritorio"
+    assert asset.status == "disponivel"
+    assert asset.brand == "Kappesberg"
+    assert asset.model == "Original"
