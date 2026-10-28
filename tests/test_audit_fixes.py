@@ -86,12 +86,21 @@ def test_issue_002_user_model_role_constraint_declaration():
 
 def test_issue_014_ip_and_mac_dialect_agnostic_types():
     """Valida se os TypeDecorators agnósticos para IP e MAC estão declarados."""
+    from unittest.mock import MagicMock
+
     ip_type = IPAddressType()
     mac_type = MACAddressType()
     assert ip_type.process_bind_param("192.168.1.10", None) == "192.168.1.10"
     assert ip_type.process_bind_param(None, None) is None
     assert mac_type.process_bind_param("AA:BB:CC:DD:EE:FF", None) == "AA:BB:CC:DD:EE:FF"
     assert mac_type.process_bind_param(None, None) is None
+
+    # Valida fallback de dialeto não-PostgreSQL (SQLite/genérico)
+    mock_dialect = MagicMock()
+    mock_dialect.name = "sqlite"
+    mock_dialect.type_descriptor = lambda t: t
+    assert ip_type.load_dialect_impl(mock_dialect) is not None
+    assert mac_type.load_dialect_impl(mock_dialect) is not None
 
 
 def test_issue_001_tag_schemas():

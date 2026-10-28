@@ -848,12 +848,13 @@ def test_equipment_use_cases_edge_cases_and_branches(
             ),
         )
 
-    # Complete successfully with naive datetime, description and notes
+    # Complete successfully with naive datetime, description and notes (covers naive started_at branch in PostgreSQL)
+    maint_naive.started_at = datetime(2026, 1, 1, 10, 0, 0)
     completed_maint = maint_uc.complete_maintenance(
         eq1.id,
         maint_naive.id,
         EquipmentMaintenanceComplete(
-            completed_at=datetime.now(),
+            completed_at=datetime(2026, 1, 1, 12, 0, 0),
             new_status_id=test_catalogs["status_ocioso"].id,
             description="Desc concluída",
             notes="Notas concluídas",
