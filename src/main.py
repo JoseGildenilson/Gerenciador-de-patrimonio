@@ -1,17 +1,10 @@
-"""Aplicação principal do FastAPI."""
+"""Aplicação principal do FastAPI - SisPatrimonio."""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from src.api.routes import router as auth_router
 from src.api.dashboard_routes import router as dashboard_router
-from src.api.equipment_routes import router as equipment_router
 from src.api.import_routes import router as import_router
-from src.api.catalog_routes import (
-    equipment_types_router,
-    sectors_router,
-    equipment_statuses_router,
-    maintenance_types_router,
-)
 from src.api.category_routes import router as category_router
 from src.api.location_routes import router as location_router
 from src.api.asset_routes import router as asset_router
@@ -27,20 +20,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Sistema de Gestão de Patrimônio e Suporte",
-    version="0.1.0",
+    description="Sistema de Gestão de Patrimônio e Suporte - SisPatrimonio",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
-# Inclui os roteadores da aplicação
+# Inclui os roteadores canônicos da aplicação
 app.include_router(auth_router)
 app.include_router(dashboard_router)
-app.include_router(equipment_router)
 app.include_router(import_router)
-app.include_router(equipment_types_router)
-app.include_router(sectors_router)
-app.include_router(equipment_statuses_router)
-app.include_router(maintenance_types_router)
 app.include_router(category_router)
 app.include_router(location_router)
 app.include_router(asset_router)
