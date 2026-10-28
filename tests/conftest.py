@@ -13,7 +13,7 @@ from alembic import command
 from alembic.config import Config
 from src.core.database import get_db, Base
 from src.core.security import hash_password
-from src.domain.models import User, EquipmentType, Sector, EquipmentStatus, MaintenanceType
+from src.domain.models import User, Category, Location, Asset
 from src.main import app
 
 
@@ -122,7 +122,7 @@ async def client(db_session: Session):
 
 @pytest.fixture
 def create_test_user(db_session: Session):
-    """Fixture auxiliar para criar técnicos de teste (role restrita a 'tecnico' ou 'colaborador')."""
+    """Fixture auxiliar para criar usuários de teste."""
 
     def _create_user(
         email: str = "tecnico@empresa.com",
@@ -134,7 +134,7 @@ def create_test_user(db_session: Session):
         user = User(
             name="Test User",
             email=email,
-            hashed_password=hashed,
+            password_hash=hashed,
             role=role,
             is_active=is_active,
         )
@@ -147,36 +147,48 @@ def create_test_user(db_session: Session):
 
 @pytest.fixture
 def test_catalogs(db_session: Session):
-    """Fixture auxiliar para obter ou criar registros de catálogo para testes."""
+    """Fixture auxiliar para obter ou criar registros de categorias e localizações para testes."""
 
-    def _get_or_create(model_cls, name: str):
-        item = db_session.query(model_cls).filter(model_cls.name == name).first()
+    def _get_or_create_cat(name: str):
+        item = db_session.query(Category).filter(Category.name == name).first()
         if not item:
-            item = model_cls(name=name)
+            item = Category(name=name)
             db_session.add(item)
             db_session.flush()
         return item
 
-    eq_type = _get_or_create(EquipmentType, "Desktop")
-    sector_ti = _get_or_create(Sector, "TI")
-    sector_com = _get_or_create(Sector, "Comunicação")
-    sector_dir = _get_or_create(Sector, "Diretoria")
-    status_em_uso = _get_or_create(EquipmentStatus, "Em uso")
-    status_em_manutencao = _get_or_create(EquipmentStatus, "Em manutenção")
-    status_ocioso = _get_or_create(EquipmentStatus, "Ocioso")
-    status_baixado = _get_or_create(EquipmentStatus, "Baixado")
-    maint_prev = _get_or_create(MaintenanceType, "Preventiva")
-    maint_corr = _get_or_create(MaintenanceType, "Corretiva")
+    def _get_or_create_loc(building: str, floor: str, sector: str):
+        item = (
+            db_session.query(Location)
+            .filter(Location.building == building, Location.floor == floor, Location.sector == sector)
+            .first()
+        )
+        if not item:
+            item = Location(building=building, floor=floor, sector=sector)
+            db_session.add(item)
+            db_session.flush()
+        return item
+
+    cat_desktop = _get_or_create_cat("Desktop")
+    cat_notebook = _get_or_create_cat("Notebook")
+    loc_ti = _get_or_create_loc("Prédio Central", "1º Andar", "TI")
+    loc_com = _get_or_create_loc("Prédio Central", "2º Andar", "Comunicação")
+    loc_dir = _get_or_create_loc("Prédio Central", "3º Andar", "Diretoria")
 
     return {
-        "type": eq_type,
-        "sector_ti": sector_ti,
-        "sector_com": sector_com,
-        "sector_dir": sector_dir,
-        "status_em_uso": status_em_uso,
-        "status_em_manutencao": status_em_manutencao,
-        "status_ocioso": status_ocioso,
-        "status_baixado": status_baixado,
-        "maint_prev": maint_prev,
-        "maint_corr": maint_corr,
+        "cat_desktop": cat_desktop,
+        "cat_notebook": cat_notebook,
+        "loc_ti": loc_ti,
+        "loc_com": loc_com,
+        "loc_dir": loc_dir,
     }
+
+
+@pytest.fixture(autouse=True)
+def _reset_auth_rate_limits():
+    """Garante isolamento de rate limit em memória entre os testes."""
+    from src.use_cases.authenticate_user import reset_rate_limits
+
+    reset_rate_limits()
+    yield
+    reset_rate_limits()

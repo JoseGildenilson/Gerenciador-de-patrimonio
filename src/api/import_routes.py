@@ -1,4 +1,4 @@
-"""Roteador HTTP do FastAPI para Importação de Planilhas de Equipamentos."""
+"""Roteador HTTP do FastAPI para Importação de Planilhas de Ativos."""
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
@@ -14,10 +14,11 @@ from src.use_cases.import_spreadsheet_use_cases import (
     ExecuteSpreadsheetImportUseCase,
 )
 
-router = APIRouter(prefix="/api/v1/equipments/import", tags=["Importação de Equipamentos"])
+router = APIRouter(tags=["Importação de Ativos"])
 
 
-@router.post("/preview", response_model=SpreadsheetImportPreviewResponse)
+@router.post("/api/v1/assets/import/preview", response_model=SpreadsheetImportPreviewResponse)
+@router.post("/api/v1/equipments/import/preview", response_model=SpreadsheetImportPreviewResponse)
 async def preview_spreadsheet(
     file: UploadFile = File(..., description="Arquivo de planilha (.xlsx ou .csv)"),
     current_user: User = Depends(require_tecnico_role),
@@ -42,7 +43,8 @@ async def preview_spreadsheet(
         )
 
 
-@router.post("/execute", response_model=SpreadsheetImportResultResponse)
+@router.post("/api/v1/assets/import/execute", response_model=SpreadsheetImportResultResponse)
+@router.post("/api/v1/equipments/import/execute", response_model=SpreadsheetImportResultResponse)
 async def execute_spreadsheet_import(
     file: UploadFile = File(..., description="Arquivo de planilha (.xlsx ou .csv)"),
     db: Session = Depends(get_db),
@@ -50,7 +52,7 @@ async def execute_spreadsheet_import(
 ):
     """
     Executa a importação transacional dos dados da planilha no banco de dados (Role: Técnico).
-    Cria novos equipamentos, atualiza os existentes (upsert), registra manutenções e cadastra tags dinâmicas.
+    Cria novos ativos, atualiza existentes (upsert), categorias e localizações.
     """
     try:
         content = await file.read()

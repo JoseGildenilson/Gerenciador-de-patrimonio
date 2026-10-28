@@ -20,7 +20,7 @@ def test_get_db_generator():
 def test_user_repository_create_get_soft_delete_and_restore(db_session: Session):
     """Testa o repositório UserRepository (create, get_by_id, soft_delete e restore)."""
     repo = UserRepository(db_session)
-    new_user = User(email="new_repo_user@empresa.com", hashed_password="hash", role="tecnico")
+    new_user = User(email="new_repo_user@empresa.com", password_hash="hash", role="tecnico")
 
     created = repo.create(new_user)
     db_session.flush()

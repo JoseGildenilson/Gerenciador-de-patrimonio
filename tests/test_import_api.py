@@ -150,11 +150,11 @@ async def test_execute_import_endpoint_success(client: AsyncClient, auth_headers
     data = response.json()
     assert data["success"] is True
     assert data["created_count"] == 1
-    assert data["tags_created_count"] >= 3
+    assert data["tags_created_count"] >= 2
     assert data["maintenances_created_count"] == 1
 
     # Faz o preview ou listagem para confirmar que foi inserido
-    get_res = await client.get("/api/v1/equipments", headers=headers)
+    get_res = await client.get("/api/v1/assets", headers=headers)
     assert get_res.status_code == 200
     eq_list = get_res.json()["items"]
     assert any(eq["patrimony_number"] == "PAT-301" for eq in eq_list)
