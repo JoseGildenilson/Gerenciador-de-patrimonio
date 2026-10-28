@@ -46,8 +46,8 @@
 - [X] T005 [US1] Formatar os arquivos Python em `src/domain/schemas.py`, `src/infrastructure/repositories.py`, `src/infrastructure/seed.py`, `src/use_cases/authenticate_user.py` e `src/use_cases/import_spreadsheet_use_cases.py` em conformidade com o formatador Ruff
 - [X] T006 [US1] Atualizar o comando de healthcheck do container de serviço PostgreSQL para `pg_isready -U postgres -d test_patrimonio_db` em `.github/workflows/ci.yml`
 - [X] T007 [P] [US1] Validar localmente a formatação e linter com `ruff check src/` e `ruff format --check src/` em `src/`
-- [X] T008 [US1] Validar a execução das migrações do banco com `alembic upgrade head` em `alembic/`
-- [X] T009 [US1] Validar a suíte de testes de backend assegurando o gate inegociável de 100% de cobertura em `tests/`
+- [X] T008 [US1] Validar a execução e reversibilidade das migrações do banco (`upgrade head` e `downgrade base`) em `alembic/versions/e5f6a7b8c9d0_purge_legacy_database_tables.py`
+- [X] T009 [US1] Validar a suíte de testes de backend e integridade referencial de importação em `src/use_cases/import_spreadsheet_use_cases.py`, `src/api/import_routes.py`, `tests/test_import_use_cases.py` e `tests/`, assegurando o gate inegociável de 100% de cobertura
 
 **Checkpoint**: User Story 1 (MVP) concluída e testável de forma independente. O backend agora executa com sucesso sem falhas de container ou formatação.
 

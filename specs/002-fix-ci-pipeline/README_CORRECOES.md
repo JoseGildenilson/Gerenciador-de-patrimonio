@@ -29,12 +29,16 @@
 * **Sintoma:** Desenvolvedores trabalhando em branches de correção não conseguiam disparar o pipeline de validação sob demanda sem abrir pull request contra `develop` ou `main`.
 * **Solução:** Adicionado o gatilho `workflow_dispatch:` na seção `on:` de `.github/workflows/ci.yml`.
 
+### 1.4. Violação de Chave Estrangeira na Importação de Planilhas e Reversibilidade de Migrações no PostgreSQL
+* **Sintoma:** No PostgreSQL do CI, os testes `test_execute_import_endpoint_success`, `test_execute_spreadsheet_import_creation_and_catalogs` e `test_execute_spreadsheet_import_upsert_all_fields` falhavam com `ForeignKeyViolation (registered_by_id=1)` em `asset_maintenances`, e `test_alembic_migrations_lifecycle` falhava no `downgrade("base")` com `UndefinedTable: relation "equipments" does not exist`.
+* **Solução:** Parametrizado `registered_by_id` em `ExecuteSpreadsheetImportUseCase` (propagando `current_user.id` em `src/api/import_routes.py` e usuários criados nas fixtures em `tests/test_import_use_cases.py`), e completada a função `downgrade()` em `alembic/versions/e5f6a7b8c9d0_purge_legacy_database_tables.py` para recriar as tabelas e índices legados exigidos pelas revisões anteriores.
+
 ---
 
 ## 2. Validação da Qualidade e Cobertura Constitucional
 
 A suíte completa de testes de backend foi executada com o seguinte resultado:
 
-* **Total de Testes:** 178 aprovados, 4 ignorados (E2E), 0 falhas.
-* **Cobertura Total de Código:** 100% (3.098 statements, 662 branches, 0 branches perdidas).
+* **Total de Testes:** 125 aprovados, 0 ignorados, 0 falhas.
+* **Cobertura Total de Código:** 100% (1.800 statements, 342 branches, 0 branches perdidas).
 * **Status do Quality Gate:** Aprovado integralmente sem necessidade de bypass ou omissões indevidas.

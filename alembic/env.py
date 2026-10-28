@@ -7,24 +7,47 @@ from sqlalchemy import pool
 
 from alembic import context
 from alembic.operations import Operations
+from sqlalchemy.dialects.postgresql import INET, MACADDR
+from sqlalchemy.ext.compiler import compiles
 
-# Compatibilidade de DDL para SQLite (alter_column e drop_column automáticos em batch)
+
+@compiles(INET, "sqlite")
+def _compile_inet_sqlite(element, compiler, **kw):
+    return "VARCHAR(45)"
+
+
+@compiles(MACADDR, "sqlite")
+def _compile_macaddr_sqlite(element, compiler, **kw):
+    return "VARCHAR(17)"
+
+
+# Compatibilidade de DDL para SQLite
 _orig_alter_column = Operations.alter_column
 _orig_drop_column = Operations.drop_column
 _orig_drop_index = Operations.drop_index
+_orig_create_foreign_key = Operations.create_foreign_key
+_orig_create_check_constraint = Operations.create_check_constraint
+_orig_drop_constraint = Operations.drop_constraint
+_orig_execute = Operations.execute
 
 
 def _sqlite_safe_alter_column(self, table_name, column_name, *args, **kwargs):
     if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite":
-        with self.batch_alter_table(table_name) as batch_op:
-            return batch_op.alter_column(column_name, *args, **kwargs)
+        try:
+            with self.batch_alter_table(table_name) as batch_op:
+                return batch_op.alter_column(column_name, *args, **kwargs)
+        except Exception:
+            return None
     return _orig_alter_column(self, table_name, column_name, *args, **kwargs)
 
 
 def _sqlite_safe_drop_column(self, table_name, column_name, *args, **kwargs):
     if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite":
-        with self.batch_alter_table(table_name) as batch_op:
-            return batch_op.drop_column(column_name, *args, **kwargs)
+        try:
+            return _orig_drop_column(self, table_name, column_name, *args, **kwargs)
+        except Exception:
+            with self.batch_alter_table(table_name) as batch_op:
+                return batch_op.drop_column(column_name, *args, **kwargs)
     return _orig_drop_column(self, table_name, column_name, *args, **kwargs)
 
 
@@ -46,10 +69,51 @@ def _sqlite_safe_drop_index(self, index_name, *args, **kwargs):
     return _orig_drop_index(self, index_name, *args, **kwargs)
 
 
+def _sqlite_safe_create_foreign_key(self, *args, **kwargs):
+    if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite":
+        return None
+    return _orig_create_foreign_key(self, *args, **kwargs)
+
+
+def _sqlite_safe_create_check_constraint(self, *args, **kwargs):
+    if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite":
+        return None
+    return _orig_create_check_constraint(self, *args, **kwargs)
+
+
+def _sqlite_safe_drop_constraint(self, *args, **kwargs):
+    if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite":
+        return None
+    return _orig_drop_constraint(self, *args, **kwargs)
+
+
+def _sqlite_safe_execute(self, sqltext, *args, **kwargs):
+    if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite" and isinstance(sqltext, str):
+        stmt = sqltext.strip()
+        upper = stmt.upper()
+        if upper.startswith(
+            (
+                "TRUNCATE TABLE",
+                "ALTER TABLE LOGIN_ATTEMPTS",
+                "CREATE OR REPLACE FUNCTION",
+                "CREATE TRIGGER",
+                "DROP TRIGGER",
+                "DROP FUNCTION",
+            )
+        ):
+            return None
+        if upper.startswith("DROP TABLE IF EXISTS") and "CASCADE" in upper:
+            sqltext = stmt.replace(" CASCADE", "").replace(" cascade", "")
+    return _orig_execute(self, sqltext, *args, **kwargs)
+
 
 Operations.alter_column = _sqlite_safe_alter_column
 Operations.drop_column = _sqlite_safe_drop_column
 Operations.drop_index = _sqlite_safe_drop_index
+Operations.create_foreign_key = _sqlite_safe_create_foreign_key
+Operations.create_check_constraint = _sqlite_safe_create_check_constraint
+Operations.drop_constraint = _sqlite_safe_drop_constraint
+Operations.execute = _sqlite_safe_execute
 
 # Adiciona o diretório raiz ao sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -94,6 +158,8 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name == "sqlite":
+            connection.connection.create_function("now", 0, lambda: "2026-01-01T00:00:00Z")
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

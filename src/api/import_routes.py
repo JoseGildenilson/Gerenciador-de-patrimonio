@@ -56,7 +56,7 @@ async def execute_spreadsheet_import(
     """
     try:
         content = await file.read()
-        use_case = ExecuteSpreadsheetImportUseCase(db)
+        use_case = ExecuteSpreadsheetImportUseCase(db, registered_by_id=current_user.id)
         return use_case.execute(content, file.filename or "")
     except ValueError as exc:
         raise HTTPException(

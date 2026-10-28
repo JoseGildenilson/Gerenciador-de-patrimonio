@@ -56,8 +56,9 @@ class PreviewSpreadsheetUseCase:
 class ExecuteSpreadsheetImportUseCase:
     """Caso de uso para execução transacional da importação da planilha no banco de dados."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, registered_by_id: int = 1):
         self.db = db
+        self.registered_by_id = registered_by_id
         self.asset_repo = AssetRepository(db)
         self.category_repo = CategoryRepository(db)
         self.location_repo = LocationRepository(db)
@@ -200,7 +201,7 @@ class ExecuteSpreadsheetImportUseCase:
                 if row.last_maintenance_at:
                     maint = AssetMaintenance(
                         asset_id=asset.id,
-                        registered_by_id=1,
+                        registered_by_id=self.registered_by_id,
                         maintenance_type="preventiva",
                         service_provider="Histórico Importado",
                         description="Manutenção registrada durante importação de planilha",
