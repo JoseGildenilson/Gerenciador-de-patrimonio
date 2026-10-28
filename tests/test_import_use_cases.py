@@ -62,7 +62,8 @@ def test_execute_spreadsheet_import_empty_rows(db_session: Session):
     assert result.created_count == 0
 
 
-def test_execute_spreadsheet_import_creation_and_catalogs(db_session: Session):
+def test_execute_spreadsheet_import_creation_and_catalogs(db_session: Session, create_test_user):
+    user = create_test_user(email="import_cat@empresa.com")
     headers = [
         "TIPO",
         "LOCALIZAÇÃO",
@@ -101,7 +102,7 @@ def test_execute_spreadsheet_import_creation_and_catalogs(db_session: Session):
     ]
 
     excel_bytes = create_mock_excel("Patrimônio", [headers, row1, row_sem_ident])
-    use_case = ExecuteSpreadsheetImportUseCase(db_session)
+    use_case = ExecuteSpreadsheetImportUseCase(db_session, registered_by_id=user.id)
     result = use_case.execute(excel_bytes, "lote1.xlsx")
 
     assert result.success is True
@@ -128,7 +129,8 @@ def test_execute_spreadsheet_import_creation_and_catalogs(db_session: Session):
     assert cat_note is not None
 
 
-def test_execute_spreadsheet_import_upsert_all_fields(db_session: Session):
+def test_execute_spreadsheet_import_upsert_all_fields(db_session: Session, create_test_user):
+    user = create_test_user(email="import_upsert@empresa.com")
     cat_repo = CategoryRepository(db_session)
     loc_repo = LocationRepository(db_session)
     asset_repo = AssetRepository(db_session)
@@ -214,7 +216,7 @@ def test_execute_spreadsheet_import_upsert_all_fields(db_session: Session):
     ]
     excel_bytes = create_mock_excel("Patrimônio", [headers, row1, row2])
 
-    use_case = ExecuteSpreadsheetImportUseCase(db_session)
+    use_case = ExecuteSpreadsheetImportUseCase(db_session, registered_by_id=user.id)
     result = use_case.execute(excel_bytes, "update_all.xlsx")
 
     assert result.success is True

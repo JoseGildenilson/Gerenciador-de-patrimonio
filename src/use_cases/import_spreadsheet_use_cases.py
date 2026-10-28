@@ -56,8 +56,9 @@ class PreviewSpreadsheetUseCase:
 class ExecuteSpreadsheetImportUseCase:
     """Caso de uso para execução transacional da importação da planilha no banco de dados."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, registered_by_id: int = 1):
         self.db = db
+        self.registered_by_id = registered_by_id
         self.asset_repo = AssetRepository(db)
         self.category_repo = CategoryRepository(db)
         self.location_repo = LocationRepository(db)
@@ -137,7 +138,12 @@ class ExecuteSpreadsheetImportUseCase:
                     norm_status = row.status.strip().lower()
                     if norm_status in ("em uso", "em_uso", "ativo", "alocado"):
                         valid_status = "em_uso"
-                    elif norm_status in ("manutencao", "em manutencao", "em_manutencao", "conserto"):
+                    elif norm_status in (
+                        "manutencao",
+                        "em manutencao",
+                        "em_manutencao",
+                        "conserto",
+                    ):
                         valid_status = "em_manutencao"
                     elif norm_status in ("baixado", "desincorporado", "sucata"):
                         valid_status = "baixado"
@@ -152,7 +158,11 @@ class ExecuteSpreadsheetImportUseCase:
                 if row.notes:
                     specs["notes"] = row.notes
 
-                patrimony_num = row.patrimony_number.strip() if row.patrimony_number else f"IMP-{row.row_number:05d}"
+                patrimony_num = (
+                    row.patrimony_number.strip()
+                    if row.patrimony_number
+                    else f"IMP-{row.row_number:05d}"
+                )
                 serial_num = row.serial_number.strip() if row.serial_number else None
 
                 asset = self.asset_repo.get_by_patrimony_number(patrimony_num)
@@ -191,7 +201,7 @@ class ExecuteSpreadsheetImportUseCase:
                 if row.last_maintenance_at:
                     maint = AssetMaintenance(
                         asset_id=asset.id,
-                        registered_by_id=1,
+                        registered_by_id=self.registered_by_id,
                         maintenance_type="preventiva",
                         service_provider="Histórico Importado",
                         description="Manutenção registrada durante importação de planilha",

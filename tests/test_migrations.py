@@ -21,16 +21,13 @@ def test_alembic_migrations_lifecycle(tmp_path):
                 conn.execute(text("DROP DATABASE IF EXISTS test_migrations_lifecycle;"))
                 conn.execute(text("CREATE DATABASE test_migrations_lifecycle;"))
             db_url = test_db_url.rsplit("/", 1)[0] + "/test_migrations_lifecycle"
-        except Exception as e:
-            pytest.skip(f"PostgreSQL offline ({e}); skipping Alembic PostgreSQL lifecycle test")
-    elif test_db_url and "sqlite" in test_db_url:
-        pytest.skip(
-            "Alembic migrations contain PostgreSQL-specific DDL (e.g. DROP TABLE CASCADE, triggers, INET); requires PostgreSQL"
-        )
+        except Exception:
+            admin_engine = None
+            db_file = tmp_path / "test_migration.db"
+            db_url = f"sqlite:///{db_file}"
     else:
         db_file = tmp_path / "test_migration.db"
         db_url = f"sqlite:///{db_file}"
-        pytest.skip("Alembic migrations contain PostgreSQL-specific DDL; requires PostgreSQL")
 
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", db_url)
