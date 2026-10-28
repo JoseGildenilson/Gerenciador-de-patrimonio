@@ -8,6 +8,12 @@
 
 **Input**: User description: "Eu peciso corrigir o CI, toda vez que eu subo no github dá algum problema, preciso corrigir isso"
 
+## Clarifications
+
+### Session 2026-10-28
+
+- Q: Como tratar as divergências de formatação do Ruff introduzidas na branch `develop` (`src/domain/schemas.py`, `src/infrastructure/repositories.py`, `src/infrastructure/seed.py`, `src/use_cases/authenticate_user.py` e `src/use_cases/import_spreadsheet_use_cases.py`) após o merge na branch `JoseGildenilson/CI-Fix`? → A: Sincronizar com `develop` (`git pull origin develop`) e aplicar as correções de formatação diretamente nesta branch.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Validação Automatizada e Confiável da Camada Backend (Priority: P1)
@@ -75,7 +81,7 @@ Como desenvolvedor, quero que as verificações de integridade da interface do u
 - **FR-002**: O pipeline DEVE suportar acionamento manual (*workflow dispatch*) para permitir revalidações sob demanda por parte dos mantenedores.
 - **FR-003**: O serviço de banco de dados no ambiente de integração DEVE possuir verificação de prontidão com credenciais e nome de banco explicitamente declarados, impedindo tentativas de conexão anônimas ou com usuários não configurados.
 - **FR-004**: O job de backend DEVE validar estritamente a conformidade de formatação de código, análise de regras estáticas e linter antes de aplicar migrações estruturais.
-- **FR-005**: O código-fonte do projeto DEVE estar integralmente em conformidade com as regras de formatação automática do projeto, sem arquivos pendentes de formatação.
+- **FR-005**: O código-fonte do projeto em `src/` (incluindo `src/domain/schemas.py`, `src/infrastructure/repositories.py`, `src/infrastructure/seed.py`, `src/use_cases/authenticate_user.py` e `src/use_cases/import_spreadsheet_use_cases.py` após sincronização com `develop`) DEVE estar integralmente em conformidade com as regras de formatação automática do projeto (`ruff format --check src/`), sem arquivos pendentes de formatação.
 - **FR-006**: O job de backend DEVE aplicar as migrações estruturais do banco de dados na instância de teste antes da execução da suíte de testes.
 - **FR-007**: O job de backend DEVE executar a suíte de testes automatizados com bloqueio estrito em caso de cobertura de código inferior a 100% de linhas e ramificações, conforme estipulado na governança constitucional do projeto.
 - **FR-008**: O job de interface do usuário DEVE executar de forma isolada e paralela, validando checagem estática de tipos, análise estática de código, compilação de artefatos e suíte de testes de interface.

@@ -137,7 +137,12 @@ class ExecuteSpreadsheetImportUseCase:
                     norm_status = row.status.strip().lower()
                     if norm_status in ("em uso", "em_uso", "ativo", "alocado"):
                         valid_status = "em_uso"
-                    elif norm_status in ("manutencao", "em manutencao", "em_manutencao", "conserto"):
+                    elif norm_status in (
+                        "manutencao",
+                        "em manutencao",
+                        "em_manutencao",
+                        "conserto",
+                    ):
                         valid_status = "em_manutencao"
                     elif norm_status in ("baixado", "desincorporado", "sucata"):
                         valid_status = "baixado"
@@ -152,7 +157,11 @@ class ExecuteSpreadsheetImportUseCase:
                 if row.notes:
                     specs["notes"] = row.notes
 
-                patrimony_num = row.patrimony_number.strip() if row.patrimony_number else f"IMP-{row.row_number:05d}"
+                patrimony_num = (
+                    row.patrimony_number.strip()
+                    if row.patrimony_number
+                    else f"IMP-{row.row_number:05d}"
+                )
                 serial_num = row.serial_number.strip() if row.serial_number else None
 
                 asset = self.asset_repo.get_by_patrimony_number(patrimony_num)

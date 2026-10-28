@@ -110,7 +110,6 @@ class DashboardRepository:
         }
 
 
-
 class CategoryRepository:
     """Repositório de acesso a dados da entidade Category."""
 

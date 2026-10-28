@@ -69,7 +69,6 @@ class DashboardMetricsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 # --- Schemas de Categorias ---
 
 

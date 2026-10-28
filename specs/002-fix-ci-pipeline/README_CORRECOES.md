@@ -21,9 +21,9 @@
   ```
 
 ### 1.2. Falha de Verificação de Formatação (`ruff format --check src/`)
-* **Sintoma:** O step `Check Backend Formatting (Ruff)` falhava imediatamente com código de erro 1 (`1 file would be reformatted, 32 files already formatted`).
-* **Causa-Raiz:** No commit `5f35ead`, o arquivo `src/infrastructure/seed.py` foi expandido com novos registros de movimentações e manutenções patrimoniais em tuplas contínuas cujas linhas ultrapassavam o limite de 100 caracteres (`line-length = 100`), violando as regras do formatador Ruff.
-* **Solução:** O arquivo `src/infrastructure/seed.py` foi devidamente reformatado pelo formatador Ruff. Agora `ruff format --check src` confirma `33 files already formatted` (100% de conformidade).
+* **Sintoma:** O step `Check Backend Formatting (Ruff)` falhava imediatamente com código de erro 1 (`5 files would be reformatted, 28 files already formatted`).
+* **Causa-Raiz:** Após a sincronização com a branch `develop` (merge do PR #2 / commit `0986eb3`), 5 arquivos em `src/` apresentavam linhas acima do limite de 100 caracteres (`line-length = 100`) ou linhas em branco excedentes entre definições de classes: `src/domain/schemas.py`, `src/infrastructure/repositories.py`, `src/infrastructure/seed.py`, `src/use_cases/authenticate_user.py` e `src/use_cases/import_spreadsheet_use_cases.py`.
+* **Solução:** Os 5 arquivos em `src/` foram reformatados seguindo estritamente o padrão do Ruff (`33 files already formatted`, 100% de conformidade).
 
 ### 1.3. Acionamento Manual e Flexibilidade de Testes (`workflow_dispatch`)
 * **Sintoma:** Desenvolvedores trabalhando em branches de correção não conseguiam disparar o pipeline de validação sob demanda sem abrir pull request contra `develop` ou `main`.

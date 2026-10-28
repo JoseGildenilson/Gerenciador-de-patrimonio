@@ -22,7 +22,11 @@ def seed_database(db: Session | None = None) -> None:
     session = db or SessionLocal()
     try:
         # 1. Usuários
-        admin = session.query(User).filter(func.lower(User.email) == "admin@sispatrimonio.edu.br").first()
+        admin = (
+            session.query(User)
+            .filter(func.lower(User.email) == "admin@sispatrimonio.edu.br")
+            .first()
+        )
         if not admin:
             admin = User(
                 name="Administrador do Sistema",
@@ -33,7 +37,11 @@ def seed_database(db: Session | None = None) -> None:
             )
             session.add(admin)
 
-        tecnico = session.query(User).filter(func.lower(User.email) == "tecnico@sispatrimonio.edu.br").first()
+        tecnico = (
+            session.query(User)
+            .filter(func.lower(User.email) == "tecnico@sispatrimonio.edu.br")
+            .first()
+        )
         if not tecnico:
             tecnico = User(
                 name="Carlos Henrique Técnico",
@@ -44,7 +52,11 @@ def seed_database(db: Session | None = None) -> None:
             )
             session.add(tecnico)
 
-        colaborador = session.query(User).filter(func.lower(User.email) == "colaborador@sispatrimonio.edu.br").first()
+        colaborador = (
+            session.query(User)
+            .filter(func.lower(User.email) == "colaborador@sispatrimonio.edu.br")
+            .first()
+        )
         if not colaborador:
             colaborador = User(
                 name="Mariana Souza Colaboradora",
@@ -82,18 +94,46 @@ def seed_database(db: Session | None = None) -> None:
 
         # 3. Localizações Físicas
         locations_data = [
-            ("Prédio Central", "1º Andar", "Departamento de TI", "Sala 101", "Setor de infraestrutura"),
-            ("Prédio Central", "2º Andar", "Coordenação Geral", "Sala 204", "Gabinete dos coordenadores"),
-            ("Bloco de Laboratórios", "Térreo", "Laboratório de Banco de Dados", "Lab-01", "30 computadores de aula"),
-            ("Bloco Administrativo", "Térreo", "Almoxarifado Central", None, "Depósito geral de estoque"),
+            (
+                "Prédio Central",
+                "1º Andar",
+                "Departamento de TI",
+                "Sala 101",
+                "Setor de infraestrutura",
+            ),
+            (
+                "Prédio Central",
+                "2º Andar",
+                "Coordenação Geral",
+                "Sala 204",
+                "Gabinete dos coordenadores",
+            ),
+            (
+                "Bloco de Laboratórios",
+                "Térreo",
+                "Laboratório de Banco de Dados",
+                "Lab-01",
+                "30 computadores de aula",
+            ),
+            (
+                "Bloco Administrativo",
+                "Térreo",
+                "Almoxarifado Central",
+                None,
+                "Depósito geral de estoque",
+            ),
         ]
         loc_map = {}
         for bld, flr, sec, rm, desc in locations_data:
-            loc = session.query(Location).filter(
-                func.lower(Location.building) == bld.lower(),
-                func.lower(Location.floor) == flr.lower(),
-                func.lower(Location.sector) == sec.lower(),
-            ).first()
+            loc = (
+                session.query(Location)
+                .filter(
+                    func.lower(Location.building) == bld.lower(),
+                    func.lower(Location.floor) == flr.lower(),
+                    func.lower(Location.sector) == sec.lower(),
+                )
+                .first()
+            )
             if not loc:
                 loc = Location(
                     building=bld,
@@ -146,7 +186,9 @@ def seed_database(db: Session | None = None) -> None:
             session.flush()
 
         # 5. Histórico de Renumeração
-        hist = session.query(PatrimonyHistory).filter(PatrimonyHistory.asset_id == asset1.id).first()
+        hist = (
+            session.query(PatrimonyHistory).filter(PatrimonyHistory.asset_id == asset1.id).first()
+        )
         if not hist:
             hist = PatrimonyHistory(
                 asset_id=asset1.id,
@@ -173,7 +215,9 @@ def seed_database(db: Session | None = None) -> None:
             session.add(mov)
 
         # 7. Manutenções
-        maint = session.query(AssetMaintenance).filter(AssetMaintenance.asset_id == asset1.id).first()
+        maint = (
+            session.query(AssetMaintenance).filter(AssetMaintenance.asset_id == asset1.id).first()
+        )
         if not maint:
             maint = AssetMaintenance(
                 asset_id=asset1.id,

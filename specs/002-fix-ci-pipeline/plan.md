@@ -8,7 +8,7 @@
 
 Estabilizar e corrigir as causas-raiz de falha do pipeline de Integração Contínua no GitHub Actions (`.github/workflows/ci.yml`). O plano abrange:
 1. Correção do healthcheck do container de serviço PostgreSQL (`pg_isready -U postgres -d test_patrimonio_db`), eliminando falhas de conexão por ausência da role `root`.
-2. Formatação estrita dos arquivos Python em `src/` (notadamente [`src/infrastructure/seed.py`](../../src/infrastructure/seed.py)) com o Ruff para garantir conformidade com `ruff format --check src/`.
+2. Formatação estrita dos arquivos Python em `src/` ([`src/domain/schemas.py`](../../src/domain/schemas.py), [`src/infrastructure/repositories.py`](../../src/infrastructure/repositories.py), [`src/infrastructure/seed.py`](../../src/infrastructure/seed.py), [`src/use_cases/authenticate_user.py`](../../src/use_cases/authenticate_user.py) e [`src/use_cases/import_spreadsheet_use_cases.py`](../../src/use_cases/import_spreadsheet_use_cases.py)) com o Ruff para garantir conformidade com `ruff format --check src/`.
 3. Inclusão do gatilho `workflow_dispatch` para permitir acionamento e depuração sob demanda em branches de correção.
 4. Preservação integral do Quality Gate constitucional de 100% de cobertura em testes de backend e validações paralelas de frontend e Docker.
 

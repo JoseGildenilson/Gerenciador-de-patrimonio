@@ -13,7 +13,9 @@ _failed_ip_attempts: dict[str, list[datetime]] = {}
 _failed_email_attempts: dict[str, list[datetime]] = {}
 
 
-def _cleanup_and_count_attempts(attempts_map: dict[str, list[datetime]], key: str, window_minutes: int = 15) -> int:
+def _cleanup_and_count_attempts(
+    attempts_map: dict[str, list[datetime]], key: str, window_minutes: int = 15
+) -> int:
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
     if key not in attempts_map:
         return 0
@@ -84,11 +86,15 @@ class AuthenticateUserUseCase:
 
         with _rate_limit_lock:
             # 1. Verifica taxa de tentativas malsucedidas por IP e por conta
-            failed_ip_count = _cleanup_and_count_attempts(_failed_ip_attempts, ip_address, window_minutes=15)
+            failed_ip_count = _cleanup_and_count_attempts(
+                _failed_ip_attempts, ip_address, window_minutes=15
+            )
             if failed_ip_count >= 10:
                 raise RateLimitExceededException()
 
-            failed_email_count = _cleanup_and_count_attempts(_failed_email_attempts, normalized_email, window_minutes=15)
+            failed_email_count = _cleanup_and_count_attempts(
+                _failed_email_attempts, normalized_email, window_minutes=15
+            )
             if failed_email_count >= 5:
                 raise RateLimitExceededException(
                     "Acesso temporariamente bloqueado por motivos de segurança devido ao excesso de tentativas malsucedidas."

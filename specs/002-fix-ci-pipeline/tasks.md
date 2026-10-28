@@ -28,7 +28,7 @@
 
 **⚠️ CRITICAL**: A auditoria das causas-raiz deve estar consolidada antes da aplicação dos ajustes nas User Stories
 
-- [X] T003 Auditar discrepâncias de formatação e regras do Ruff apontadas em `src/infrastructure/seed.py`
+- [X] T003 Auditar discrepâncias de formatação e regras do Ruff apontadas em `src/domain/schemas.py`, `src/infrastructure/repositories.py`, `src/infrastructure/seed.py`, `src/use_cases/authenticate_user.py` e `src/use_cases/import_spreadsheet_use_cases.py`
 - [X] T004 [P] Auditar a declaração do serviço PostgreSQL e parâmetros de healthcheck em `.github/workflows/ci.yml`
 
 **Checkpoint**: Pré-requisitos analisados - implementação das User Stories pode iniciar
@@ -43,7 +43,7 @@
 
 ### Implementation for User Story 1
 
-- [X] T005 [US1] Formatar o código de dados semente em `src/infrastructure/seed.py` com o formatador Ruff
+- [X] T005 [US1] Formatar os arquivos Python em `src/domain/schemas.py`, `src/infrastructure/repositories.py`, `src/infrastructure/seed.py`, `src/use_cases/authenticate_user.py` e `src/use_cases/import_spreadsheet_use_cases.py` em conformidade com o formatador Ruff
 - [X] T006 [US1] Atualizar o comando de healthcheck do container de serviço PostgreSQL para `pg_isready -U postgres -d test_patrimonio_db` em `.github/workflows/ci.yml`
 - [X] T007 [P] [US1] Validar localmente a formatação e linter com `ruff check src/` e `ruff format --check src/` em `src/`
 - [X] T008 [US1] Validar a execução das migrações do banco com `alembic upgrade head` em `alembic/`
