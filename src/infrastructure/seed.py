@@ -429,7 +429,11 @@ def seed_database():
 
         eq_map = {}
         for data in equipments_data:
-            eq = db.query(Equipment).filter(Equipment.patrimony_number == data["patrimony_number"]).first()
+            eq = (
+                db.query(Equipment)
+                .filter(Equipment.patrimony_number == data["patrimony_number"])
+                .first()
+            )
             if not eq:
                 eq = Equipment(
                     patrimony_number=data["patrimony_number"],
@@ -445,7 +449,9 @@ def seed_database():
                     mac_address=data.get("mac"),
                     printer_identifier=data.get("printer_id"),
                     windows_product_key_encrypted=(
-                        encrypt_windows_product_key(data["win_key"]) if data.get("win_key") else None
+                        encrypt_windows_product_key(data["win_key"])
+                        if data.get("win_key")
+                        else None
                     ),
                     created_at=now - timedelta(days=20),
                 )
@@ -462,7 +468,13 @@ def seed_database():
             ("PAT-1007", "Comunicação", "TI", "Devolução por ociosidade", 15),
             ("PAT-1011", "Almoxarifado", "Diretoria", "Ativação no gabinete de gestão", 20),
             ("PAT-1016", "Almoxarifado", "Rádio Produção", "Atribuição a assistente de edição", 18),
-            ("PAT-1017", "Almoxarifado", "Rádio Produção", "Montagem de ilha de renderização de vídeo", 12),
+            (
+                "PAT-1017",
+                "Almoxarifado",
+                "Rádio Produção",
+                "Montagem de ilha de renderização de vídeo",
+                12,
+            ),
             ("PAT-1019", "Diretoria", "TI", "Encaminhamento para manutenção preventiva", 5),
             ("PAT-1020", "TI", "Almoxarifado", "Guarda em custódia temporária", 2),
         ]
@@ -493,12 +505,42 @@ def seed_database():
         # 5. Manutenções de Equipamentos (Preventivas e Corretivas)
         maintenances_data = [
             ("PAT-1004", "Corretiva", "Troca do conjunto de fusor e limpeza interna", 10, None),
-            ("PAT-1001", "Preventiva", "Limpeza de coolers, ventoinhas e troca de pasta térmica", 20, 20),
-            ("PAT-1003", "Preventiva", "Atualização de BIOS e inspeção de integridade do SSD", 15, 15),
-            ("PAT-1013", "Corretiva", "Curto na placa-mãe sem viabilidade de reparo (baixado)", 30, 28),
-            ("PAT-1019", "Corretiva", "Desobstrução do cabeçote de impressão e troca de almofada", 4, None),
+            (
+                "PAT-1001",
+                "Preventiva",
+                "Limpeza de coolers, ventoinhas e troca de pasta térmica",
+                20,
+                20,
+            ),
+            (
+                "PAT-1003",
+                "Preventiva",
+                "Atualização de BIOS e inspeção de integridade do SSD",
+                15,
+                15,
+            ),
+            (
+                "PAT-1013",
+                "Corretiva",
+                "Curto na placa-mãe sem viabilidade de reparo (baixado)",
+                30,
+                28,
+            ),
+            (
+                "PAT-1019",
+                "Corretiva",
+                "Desobstrução do cabeçote de impressão e troca de almofada",
+                4,
+                None,
+            ),
             ("PAT-1007", "Preventiva", "Reinstalação de imagem de SO e testes de estresse", 12, 12),
-            ("PAT-1017", "Preventiva", "Calibração térmica dos ventiladores e testes da placa RTX", 8, 8),
+            (
+                "PAT-1017",
+                "Preventiva",
+                "Calibração térmica dos ventiladores e testes da placa RTX",
+                8,
+                8,
+            ),
         ]
 
         for p_num, m_type, desc, start_days, end_days in maintenances_data:
@@ -565,10 +607,34 @@ def seed_database():
         locations_data = [
             ("Prédio Central", "1º Andar", "TI", "101", "Sala de Suporte Técnico"),
             ("Bloco B", "Térreo", "Almoxarifado", None, "Depósito Geral e Logística"),
-            ("Prédio Central", "2º Andar", "Coordenação Geral", "204", "Gabinete dos Coordenadores"),
-            ("Bloco de Laboratórios", "Térreo", "Lab de Banco de Dados", "Lab-01", "Laboratório Prático com 30 Bancadas"),
-            ("Bloco de Laboratórios", "1º Andar", "Lab de Redes", "Lab-104", "Rack de Roteadores, Switches e Patch Panels"),
-            ("Bloco Administrativo", "3º Andar", "Diretoria Executiva", "302", "Sala da Diretoria e Reuniões"),
+            (
+                "Prédio Central",
+                "2º Andar",
+                "Coordenação Geral",
+                "204",
+                "Gabinete dos Coordenadores",
+            ),
+            (
+                "Bloco de Laboratórios",
+                "Térreo",
+                "Lab de Banco de Dados",
+                "Lab-01",
+                "Laboratório Prático com 30 Bancadas",
+            ),
+            (
+                "Bloco de Laboratórios",
+                "1º Andar",
+                "Lab de Redes",
+                "Lab-104",
+                "Rack de Roteadores, Switches e Patch Panels",
+            ),
+            (
+                "Bloco Administrativo",
+                "3º Andar",
+                "Diretoria Executiva",
+                "302",
+                "Sala da Diretoria e Reuniões",
+            ),
         ]
 
         loc_map = {}
@@ -654,7 +720,11 @@ def seed_database():
                 "model": "PowerEdge R640",
                 "cost": 24500.00,
                 "status": "em_uso",
-                "specs": {"cpu": "2x Intel Xeon Silver 4210", "ram": "64GB ECC", "raid": "PERC H730P"},
+                "specs": {
+                    "cpu": "2x Intel Xeon Silver 4210",
+                    "ram": "64GB ECC",
+                    "raid": "PERC H730P",
+                },
             },
             {
                 "patrimony_number": "SIS-0005",
@@ -745,7 +815,11 @@ def seed_database():
                 "model": "PowerLite W49",
                 "cost": 3600.00,
                 "status": "em_uso",
-                "specs": {"brightness_lumens": 3800, "resolution": "WXGA 1280x800", "lamp_life": "17000h"},
+                "specs": {
+                    "brightness_lumens": 3800,
+                    "resolution": "WXGA 1280x800",
+                    "lamp_life": "17000h",
+                },
             },
             {
                 "patrimony_number": "SIS-0012",
@@ -758,7 +832,11 @@ def seed_database():
                 "model": "OptiPlex 3050",
                 "cost": 2200.00,
                 "status": "baixado",
-                "specs": {"cpu": "Core i3-7100", "ram": "4GB", "condemnation_reason": "Falha na controladora"},
+                "specs": {
+                    "cpu": "Core i3-7100",
+                    "ram": "4GB",
+                    "condemnation_reason": "Falha na controladora",
+                },
             },
         ]
 
@@ -786,9 +864,24 @@ def seed_database():
 
         # 9. Histórico de Renumeração SisPatrimonio
         renumber_history = [
-            ("SIS-0001", "SIS-0000-ANTIGO", "SIS-0001", "Substituição de plaqueta danificada na manutenção"),
-            ("SIS-0003", "REDE-SW-048", "SIS-0003", "Recadastramento e padronização no novo sistema"),
-            ("SIS-0004", "SRV-DELL-OLD", "SIS-0004", "Migração de código patrimonial legado para formato oficial"),
+            (
+                "SIS-0001",
+                "SIS-0000-ANTIGO",
+                "SIS-0001",
+                "Substituição de plaqueta danificada na manutenção",
+            ),
+            (
+                "SIS-0003",
+                "REDE-SW-048",
+                "SIS-0003",
+                "Recadastramento e padronização no novo sistema",
+            ),
+            (
+                "SIS-0004",
+                "SRV-DELL-OLD",
+                "SIS-0004",
+                "Migração de código patrimonial legado para formato oficial",
+            ),
         ]
 
         for p_num, old_num, new_num, reason in renumber_history:
@@ -815,11 +908,51 @@ def seed_database():
 
         # 10. Movimentações SisPatrimonio com Termos de Custódia
         asset_movements_data = [
-            ("SIS-0001", loc_almox.id, loc_ti.id, None, tecnico.id, "Alocação do posto de trabalho técnico", 50),
-            ("SIS-0002", loc_almox.id, loc_coord.id, None, colaborador.id, "Entrega do notebook para o coordenador", 35),
-            ("SIS-0006", loc_coord.id, loc_ti.id, colaborador.id, tecnico.id, "Recolhimento para assistência técnica", 10),
-            ("SIS-0010", loc_ti.id, loc_almox.id, tecnico.id, None, "Devolução para estoque após encerramento de projeto", 8),
-            ("SIS-0011", loc_almox.id, loc_lab_bd.id, None, None, "Instalação no teto do laboratório de BD", 25),
+            (
+                "SIS-0001",
+                loc_almox.id,
+                loc_ti.id,
+                None,
+                tecnico.id,
+                "Alocação do posto de trabalho técnico",
+                50,
+            ),
+            (
+                "SIS-0002",
+                loc_almox.id,
+                loc_coord.id,
+                None,
+                colaborador.id,
+                "Entrega do notebook para o coordenador",
+                35,
+            ),
+            (
+                "SIS-0006",
+                loc_coord.id,
+                loc_ti.id,
+                colaborador.id,
+                tecnico.id,
+                "Recolhimento para assistência técnica",
+                10,
+            ),
+            (
+                "SIS-0010",
+                loc_ti.id,
+                loc_almox.id,
+                tecnico.id,
+                None,
+                "Devolução para estoque após encerramento de projeto",
+                8,
+            ),
+            (
+                "SIS-0011",
+                loc_almox.id,
+                loc_lab_bd.id,
+                None,
+                None,
+                "Instalação no teto do laboratório de BD",
+                25,
+            ),
         ]
 
         for p_num, orig_id, dest_id, from_uid, to_uid, notes, days_ago in asset_movements_data:
@@ -849,11 +982,46 @@ def seed_database():
 
         # 11. Manutenções SisPatrimonio
         asset_maintenances_data = [
-            ("SIS-0001", "preventiva", "Equipe Interna de TI", "Limpeza preventiva de coolers e diagnóstico de hardware", 0.00, 40),
-            ("SIS-0004", "preventiva", "Dell ProSupport Enterprise", "Substituição preventiva de bateria da controladora RAID", 450.00, 20),
-            ("SIS-0006", "corretiva", "Autorizada HP Care", "Troca da unidade de fusão e roletes de tração", 580.00, 5),
-            ("SIS-0009", "preventiva", "Engenharia Elétrica Especializada", "Substituição preventiva do banco de baterias seladas", 1200.00, 15),
-            ("SIS-0012", "corretiva", "Suporte Interno", "Perícia de queima de componentes elétricos da placa", 0.00, 60),
+            (
+                "SIS-0001",
+                "preventiva",
+                "Equipe Interna de TI",
+                "Limpeza preventiva de coolers e diagnóstico de hardware",
+                0.00,
+                40,
+            ),
+            (
+                "SIS-0004",
+                "preventiva",
+                "Dell ProSupport Enterprise",
+                "Substituição preventiva de bateria da controladora RAID",
+                450.00,
+                20,
+            ),
+            (
+                "SIS-0006",
+                "corretiva",
+                "Autorizada HP Care",
+                "Troca da unidade de fusão e roletes de tração",
+                580.00,
+                5,
+            ),
+            (
+                "SIS-0009",
+                "preventiva",
+                "Engenharia Elétrica Especializada",
+                "Substituição preventiva do banco de baterias seladas",
+                1200.00,
+                15,
+            ),
+            (
+                "SIS-0012",
+                "corretiva",
+                "Suporte Interno",
+                "Perícia de queima de componentes elétricos da placa",
+                0.00,
+                60,
+            ),
         ]
 
         for p_num, m_type, provider, desc, cost, days_ago in asset_maintenances_data:

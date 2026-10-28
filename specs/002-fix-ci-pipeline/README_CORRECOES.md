@@ -1,0 +1,40 @@
+# Relatório de Correções: Estabilização do CI Pipeline
+
+**Feature**: `002-fix-ci-pipeline`  
+**Data**: 2026-10-28  
+**Branch**: `JoseGildenilson/CI-Fix`  
+
+---
+
+## 1. Problemas Identificados e Diagnóstico
+
+### 1.1. Healthcheck do Container de Serviço PostgreSQL
+* **Sintoma:** O job `Backend Tests & Migrations` registrava logs repetidos `FATAL: role "root" does not exist` durante o healthcheck e inicialização de containers.
+* **Causa-Raiz:** O comando configurado em `options: >-` era simplesmente `pg_isready`. Sem usuário especificado, o container Alpine executa o binário sob o usuário do sistema do container (`root`), o qual não existe no catálogo de usuários do PostgreSQL (apenas `postgres` foi criado).
+* **Solução:** Atualizado em `.github/workflows/ci.yml` para:
+  ```yaml
+  options: >-
+    --health-cmd "pg_isready -U postgres -d test_patrimonio_db"
+    --health-interval 10s
+    --health-timeout 5s
+    --health-retries 5
+  ```
+
+### 1.2. Falha de Verificação de Formatação (`ruff format --check src/`)
+* **Sintoma:** O step `Check Backend Formatting (Ruff)` falhava imediatamente com código de erro 1 (`1 file would be reformatted, 32 files already formatted`).
+* **Causa-Raiz:** No commit `5f35ead`, o arquivo `src/infrastructure/seed.py` foi expandido com novos registros de movimentações e manutenções patrimoniais em tuplas contínuas cujas linhas ultrapassavam o limite de 100 caracteres (`line-length = 100`), violando as regras do formatador Ruff.
+* **Solução:** O arquivo `src/infrastructure/seed.py` foi devidamente reformatado pelo formatador Ruff. Agora `ruff format --check src` confirma `33 files already formatted` (100% de conformidade).
+
+### 1.3. Acionamento Manual e Flexibilidade de Testes (`workflow_dispatch`)
+* **Sintoma:** Desenvolvedores trabalhando em branches de correção não conseguiam disparar o pipeline de validação sob demanda sem abrir pull request contra `develop` ou `main`.
+* **Solução:** Adicionado o gatilho `workflow_dispatch:` na seção `on:` de `.github/workflows/ci.yml`.
+
+---
+
+## 2. Validação da Qualidade e Cobertura Constitucional
+
+A suíte completa de testes de backend foi executada com o seguinte resultado:
+
+* **Total de Testes:** 178 aprovados, 4 ignorados (E2E), 0 falhas.
+* **Cobertura Total de Código:** 100% (3.098 statements, 662 branches, 0 branches perdidas).
+* **Status do Quality Gate:** Aprovado integralmente sem necessidade de bypass ou omissões indevidas.
