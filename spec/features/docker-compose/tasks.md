@@ -14,7 +14,7 @@ Este documento define o plano detalhado de tarefas para a implementação da inf
 | **RN-DK-04** | Hot-Reload em desenvolvimento no Backend e Frontend. | **TASK-02**, **TASK-04**, **TASK-06** |
 | **RN-DK-05** | Build multi-stage otimizado (desenvolvimento vs produção). | **TASK-02**, **TASK-04**, **TASK-07** |
 | **Cenário 1** | Inicialização com `docker compose up` (Postgres, Backend, Frontend). | **TASK-06** |
-| **Cenário 2** | Persistência de dados do PostgreSQL no volume `postgres_data`. | **TASK-06** |
+| **Cenário 2** | Persistência de dados do PostgreSQL no volume `patrimonio_data`. | **TASK-06** |
 | **Cenário 3** | Hot-reload do Backend FastAPI em desenvolvimento. | **TASK-02**, **TASK-06** |
 | **Cenário 4** | Hot-reload do Frontend Vite em desenvolvimento. | **TASK-04**, **TASK-06** |
 | **Cenário 5** | Execução de produção via `docker-compose.prod.yml` com Nginx. | **TASK-07** |
@@ -72,10 +72,10 @@ Este documento define o plano detalhado de tarefas para a implementação da inf
   - *Critério de Aceite:* Todas as variáveis necessárias estão mapeadas e desacopladas do código.
 
 - [x] **TASK-06: Criar `docker-compose.yml` (Ambiente de Desenvolvimento)**
-  - [x] Definir serviço `postgres` com healthcheck `pg_isready` e volume `postgres_data`.
+  - [x] Definir serviço `postgres` com healthcheck `pg_isready` e volume `patrimonio_data`.
   - [x] Definir serviço `backend` com `depends_on: { postgres: { condition: service_healthy } }`, portas expostas e volumes montados para live reload.
   - [x] Definir serviço `frontend` com target `development`, portas expostas e volumes montados para hot reload.
-  - [x] Configurar rede interna unificada `patrimonio-net`.
+  - [x] Configurar rede interna unificada `patrimonio_net`.
   - *Critério de Aceite:* `docker compose up` inicia os 3 serviços de forma ordenada e acessível.
 
 - [x] **TASK-07: Criar `docker-compose.prod.yml` (Ambiente de Produção)**
