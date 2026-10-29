@@ -11,7 +11,7 @@ Esta especificação define a arquitetura, configuração e ciclo de vida dos co
 ### 2.1 Serviço de Banco de Dados (`postgres`)
 - **Imagem:** `postgres:16-alpine`.
 - **Porta Exposta:** `5432:5432` (mapeada para acesso local e depuração).
-- **Volume de Dados:** Volume nomeado `postgres_data` montado em `/var/lib/postgresql/data` para persistência permanente.
+- **Volume de Dados:** Volume nomeado `patrimonio_data` montado em `/var/lib/postgresql/data` para persistência permanente.
 - **Variáveis de Ambiente:**
   - `POSTGRES_USER`: Usuário do banco (padrão: `postgres`).
   - `POSTGRES_PASSWORD`: Senha do banco (padrão: `postgres`).
@@ -42,8 +42,8 @@ Esta especificação define a arquitetura, configuração e ciclo de vida dos co
   - Estágio 1 (Builder): Build com `npm run build` gerando bundle estático em `/app/dist`.
   - Estágio 2 (Runner): Servidor web `nginx:alpine` servindo os arquivos estáticos na porta `80` (mapeada para `3000`), com regras de fallback SPA (`try_files $uri $uri/ /index.html`) e proxy reverso para `/api/` direcionado ao container do backend.
 
-### 2.4 Rede Compartilhada (`patrimonio-net`)
-- Uma rede bridge customizada (`patrimonio-net`) que permite a comunicação direta por nome de host (`postgres`, `backend`, `frontend`) entre todos os serviços.
+### 2.4 Rede Compartilhada (`patrimonio_net`)
+- Uma rede bridge customizada (`patrimonio_net`) que permite a comunicação direta por nome de host (`postgres`, `backend`, `frontend`) entre todos os serviços.
 
 ---
 
@@ -70,7 +70,7 @@ Esta especificação define a arquitetura, configuração e ciclo de vida dos co
 ### Cenário 2: Persistência de dados após reinicialização do container PostgreSQL
 - **Dado** que novos equipamentos e usuários tenham sido criados no sistema rodando em container
 - **Quando** os containers forem parados com `docker compose down` e iniciados novamente com `docker compose up`
-- **Então** todos os dados cadastrados no PostgreSQL devem permanecer íntegros através do volume `postgres_data`.
+- **Então** todos os dados cadastrados no PostgreSQL devem permanecer íntegros através do volume `patrimonio_data`.
 
 ### Cenário 3: Hot-Reload do Backend no Container
 - **Dado** que o container do backend esteja em execução em modo de desenvolvimento
