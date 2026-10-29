@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-patrimonio_db}
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
+      - patrimonio_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-patrimonio_db}"]
       interval: 5s
@@ -26,7 +26,7 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - patrimonio-net
+      - patrimonio_net
 
   backend:
     build:
@@ -61,7 +61,7 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - patrimonio-net
+      - patrimonio_net
 
   frontend:
     build:
@@ -86,13 +86,13 @@ services:
         max-size: "10m"
         max-file: "3"
     networks:
-      - patrimonio-net
+      - patrimonio_net
 
 volumes:
-  postgres_prod_data:
-    name: patrimonio_postgres_prod_data
+  patrimonio_data:
+    name: patrimonio_data_prod
 
 networks:
-  patrimonio-net:
+  patrimonio_net:
     name: patrimonio_net_prod
     driver: bridge

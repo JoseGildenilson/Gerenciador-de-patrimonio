@@ -1,4 +1,4 @@
-"""Add equipment management models
+"""Add equipment models for Gerenciador de Patrimonio
 
 Revision ID: 97cfe449ece9
 Revises: '53b2fa2ee904'
