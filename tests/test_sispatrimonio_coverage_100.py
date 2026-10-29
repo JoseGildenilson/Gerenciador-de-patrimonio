@@ -406,9 +406,7 @@ async def test_auth_routes_coverage_revoked_and_logout(client, create_test_user)
     user = create_test_user(email="logout_cov@empresa.com", password="Password123!")
     from src.core.security import create_access_token, create_refresh_token, revoke_token
 
-    access_tok = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role}
-    )
+    access_tok = create_access_token({"sub": str(user.id), "email": user.email, "role": user.role})
     refresh_tok = create_refresh_token({"sub": str(user.id)})
 
     # Teste de refresh com token já revogado (linha 156)
