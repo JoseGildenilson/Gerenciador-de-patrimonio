@@ -13,6 +13,13 @@ def create_db() -> int:
     inspector = inspect(engine)
     tables = inspector.get_table_names()
     print(f"Sucesso! {len(tables)} tabelas presentes no banco de dados.")
+
+    from alembic.config import Config
+    from alembic import command
+
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", engine.url.render_as_string(hide_password=False))
+    command.stamp(alembic_cfg, "head")
     return 0
 
 

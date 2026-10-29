@@ -160,7 +160,9 @@ def test_catalogs(db_session: Session):
     def _get_or_create_loc(building: str, floor: str, sector: str):
         item = (
             db_session.query(Location)
-            .filter(Location.building == building, Location.floor == floor, Location.sector == sector)
+            .filter(
+                Location.building == building, Location.floor == floor, Location.sector == sector
+            )
             .first()
         )
         if not item:
