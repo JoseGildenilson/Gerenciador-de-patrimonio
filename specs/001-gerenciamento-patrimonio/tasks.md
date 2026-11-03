@@ -176,6 +176,21 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 
 ---
 
+## Phase 9: User Story 6 - Observabilidade e Logs Descritivos de Banco de Dados (Priority: P2 - FR-012, SC-006)
+
+**Goal**: Permitir visualização limpa de queries SQL no terminal (SELECT ao listar, INSERT ao cadastrar, UPDATE/DELETE em alterações) com parâmetros legíveis, tempo em ms e higienização de senhas (`[REDACTED]`), filtrando consultas automáticas de healthcheck (`SELECT 1`).
+
+**Independent Test**: Executar uma requisição de listagem e outra de cadastro e verificar no terminal a emissão de `[SQL QUERY]` com parâmetros formatados e duração em ms, sem ocorrência de `SELECT 1` e com dados sensíveis mascarados.
+
+### Implementation for User Story 6
+
+- [x] T070 [P] [US6] Add LOG_SQL_STATEMENTS configuration flag in `src/core/config.py` with default true in development and false in production
+- [x] T071 [US6] Implement SQLAlchemy `before_cursor_execute` and `after_cursor_execute` event listeners in `src/core/database.py` with `SELECT 1` filtering, elapsed time in ms, and sensitive parameter sanitization (`[REDACTED]`)
+- [x] T072 [P] [US6] Implement unit tests for SQL statement logging, timer calculation, healthcheck filtering, and password redaction in `tests/test_database.py`
+- [x] T073 [US6] Validate SQL query logging during HTTP endpoint requests (listing, creation) in `tests/test_database.py` with `LOG_SQL_STATEMENTS` enabled
+- [x] T074 [P] [US6] Update documentation in `README.md` and `specs/001-gerenciamento-patrimonio/quickstart.md` with instructions for observing database logs during professor demonstration
+- [x] T075 [US6] Verify complete test suite coverage with `PYTHONPATH=. uv run pytest --cov=src --cov-branch --cov-fail-under=100` and code formatting with `uv run ruff check .`
+
 ---
 
 ## Dependencies & Execution Order
@@ -187,7 +202,9 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 - **User Story 2 (Phase 4)**: Depende de Foundational (Phase 2). Pode executar em paralelo ou após US1.
 - **User Story 3 (Phase 5)**: Depende de US1 e US2 (necessita de `assets` e `locations`).
 - **User Story 4 (Phase 6)**: Depende de US1 (necessita de `assets`).
-- **Polish (Phase 7)**: Depende da conclusão de todas as histórias desejadas.
+- **User Story 5 (Phase 8)**: Comandos CLI e scripts SQL nativos.
+- **User Story 6 (Phase 9)**: Depende de `src/core/database.py` e `src/core/config.py`.
+- **Polish & Quality Gate**: Depende da conclusão de todas as histórias desejadas.
 
 ### Parallel Execution Examples
 
@@ -223,3 +240,15 @@ T011: "Asset model in src/domain/models.py"
 4. User Story 3 (Movimentações e Termo) integrada.
 5. User Story 4 (Renumeração e Manutenções) integrada.
 6. Phase 7 (Polish, CI 100% coverage e Quickstart) validado.
+
+
+---
+
+## Phase 10: Convergence
+
+- [x] T076 CRITICAL: Replace raw SQL `text()` calls in `src/infrastructure/db_readiness.py` with SQLAlchemy 2.0 Core `select(1)` and `postgresql.ENUM(...).create(checkfirst=True)` and update `tests/test_db_readiness.py` per Constitution III (contradicts)
+- [x] T077 Align default test user credentials in `README.md` and placeholder in `frontend/src/components/LoginForm.tsx` with the canonical `@sispatrimonio.edu.br` accounts seeded by `db-seed` per FR-010, US5/AC2, T057 (contradicts)
+- [x] T078 Replace truncated Argon2 password hashes in `database/populate.sql` with a valid Argon2id hash for `'senha123'` and include canonical user emails (`admin`, `tecnico`, `colaborador`) per FR-011, US5/AC3, T052 (contradicts)
+- [x] T079 Enforce `requires_serial_number` validation during asset updates in `src/use_cases/asset_use_cases.py` and add unit/API test coverage in `tests/test_asset_api.py` per FR-005 (partial)
+- [x] T080 Block movements and new maintenances on decommissioned (`'baixado'`) assets in `src/use_cases/movement_use_cases.py` and `src/use_cases/maintenance_use_cases.py` with corresponding tests per spec: Edge Case 3 (missing)
+- [x] T081 Synchronize `src/infrastructure/seed.py` dataset with `database/populate.sql` and ensure PostgreSQL enum lifecycle in `alembic/versions/d4e5f6a7b8c9_evolve_to_sispatrimonio_model.py` per FR-001, SC-001, US5/AC2 (partial)

@@ -275,8 +275,29 @@ Ao executar o comando de povoamento (`db-seed` ou `populate.sql`), as seguintes 
 | Papel | E-mail | Senha | Permissões |
 |---|---|---|---|
 | **Administrador** | `admin@sispatrimonio.edu.br` | `senha123` | Acesso pleno ao sistema, gerenciamento de usuários, categorias e auditoria contábil. |
-| **Técnico de TI** | `tecnico@empresa.com` | `senha123` | Cadastro e edição de ativos, movimentações físicas, renumeração de placas e manutenções técnicas. |
-| **Colaborador** | `colaborador@empresa.com` | `senha123` | Consulta dos ativos sob sua custódia e confirmação de aceite de termos de responsabilidade. |
+| **Técnico de TI** | `tecnico@sispatrimonio.edu.br` | `senha123` | Cadastro e edição de ativos, movimentações físicas, renumeração de placas e manutenções técnicas. |
+| **Colaborador** | `colaborador@sispatrimonio.edu.br` | `senha123` | Consulta dos ativos sob sua custódia e confirmação de aceite de termos de responsabilidade. |
+
+---
+
+## 🔍 Observabilidade & Visualização de Operações SQL em Tempo Real
+
+Para apresentação e avaliação na disciplina de **Banco de Dados**, o sistema possui um mecanismo nativo de logging de queries em tempo real no backend:
+
+- **Correlação Direta:** A cada requisição na API ou navegação no Frontend (ex.: listar patrimônios, cadastrar ativo, movimentar bem), o terminal do backend exibe imediatamente o comando SQL executado e o tempo de resposta:
+  ```text
+  [SQL QUERY] (1.12ms) SQL: SELECT assets.id, assets.patrimony_number, assets.description FROM assets WHERE assets.deleted_at IS NULL | PARAMS: {}
+  ```
+- **Zero Poluição:** Consultas de verificação periódica de saúde (*healthchecks* `SELECT 1`) são filtradas, mantendo o console limpo e focado nas operações do usuário.
+- **Segurança de Credenciais:** Hashes de senhas e dados confidenciais são automaticamente mascarados como `[REDACTED]`.
+- **Controle por Variável de Ambiente:** Ativado por padrão em desenvolvimento. Pode ser configurado via `.env` ou linha de comando:
+  ```bash
+  LOG_SQL_STATEMENTS=true uv run uvicorn src.main:app --port 8000
+  ```
+  Para visualizar em tempo real no Docker:
+  ```bash
+  docker logs -f patrimonio_backend
+  ```
 
 ---
 

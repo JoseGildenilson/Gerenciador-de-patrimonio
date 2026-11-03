@@ -8,6 +8,14 @@
 
 **Input**: User description: "Project sispatrimonio com novo modelo de banco de dados para matéria de banco de dados: Enums (user_role, asset_status, maintenance_type), tabelas users, locations, categories, assets, patrimony_history, asset_movements e asset_maintenances."
 
+## Clarifications
+
+### Session 2026-10-31
+
+- Q: Como o sistema deve registrar e exibir as operações de banco de dados nos logs durante a execução da aplicação para a apresentação acadêmica? → A: Listener customizado no SQLAlchemy que exibe SQL limpo, parâmetros e tempo em ms no terminal do backend, filtrando ruídos de healthcheck (`SELECT 1`).
+- Q: Como deve ser controlado o acionamento desse log detalhado de operações SQL no sistema? (FR-012) → A: Variável de ambiente configurável (`LOG_SQL_STATEMENTS=true`), ativada por padrão em ambiente de desenvolvimento e desativada em produção.
+- Q: Como os valores de parâmetros sensíveis (como hashes de senhas e chaves criptográficas) devem ser tratados na exibição dos logs de SQL? (FR-012) → A: Mascaramento de dados sensíveis (parâmetros como senhas e credenciais são substituídos por `[REDACTED]`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Cadastro e Gestão de Ativos com Categorias e Depreciação (Priority: P1)
@@ -88,12 +96,30 @@ Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sis
 
 ---
 
+### User Story 6 - Observabilidade e Visualização de Operações de Banco nos Logs (Priority: P2)
+
+Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sistema, quero visualizar nos logs da aplicação as queries SQL executadas a cada requisição (SELECT ao listar, INSERT ao cadastrar, UPDATE/DELETE em alterações) com parâmetros e tempo em ms, de forma limpa e sem poluição de healthcheck, para demonstrar e auditar o funcionamento do banco em tempo real.
+
+**Why this priority**: Requisito essencial para demonstração prática e defesa do projeto na disciplina de Banco de Dados.
+
+**Independent Test**: Executar uma requisição de listagem (`GET /api/v1/assets`) e de cadastro (`POST /api/v1/assets`), confirmando nos logs do terminal a emissão de `[SQL QUERY]` com o SQL executado, duração em ms, sem ocorrência de `SELECT 1` e com campos confidenciais mascarados como `[REDACTED]`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a aplicação executando com `LOG_SQL_STATEMENTS = true`, **When** uma listagem de ativos for solicitada, **Then** o comando `SELECT` gerado deve ser exibido no log formatado com seus parâmetros e tempo de resposta em milissegundos.
+2. **Given** um cadastro de usuário ou autenticação com dados de senha, **When** a query for registrada nos logs, **Then** os campos sensíveis (`password_hash`) devem ser automaticamente mascarados como `[REDACTED]`.
+3. **Given** o container executando o healthcheck periódico (`SELECT 1`), **When** o comando for executado pelo SGBD, **Then** o listener de log da aplicação deve ignorar essa consulta, evitando poluição visual no terminal.
+
+---
+
 ### Edge Cases
 
 - **Exclusão Lógica de Ativos e Usuários**: Ativos e usuários possuem `deleted_at`. Um usuário excluído logicamente não pode receber novas atribuições de custódia de bens (`assigned_user_id`).
 - **Categoria exige número de série**: Se `categories.requires_serial_number` for alterado para `true` posteriormente, ativos já existentes sem serial devem manter integridade, mas novas edições e inserções devem exigir o número de série.
 - **Transição de Status de Ativo**: Um ativo com status `baixado` não pode ter manutenções abertas nem sofrer transferências para novas localizações ativas sem restauração prévia.
 - **Campos Numéricos e Financeiros**: `purchase_cost` e `asset_maintenances.cost` utilizam `numeric(12,2)`, não admitindo valores negativos. `residual_value_rate` deve validar faixa de `0.00` a `100.00`.
+- **Parâmetros Sensíveis em Logs de Banco**: Na persistência, leitura ou falha de execução envolvendo usuários e credenciais, a higienização de parâmetros (`sanitize_sql_params`) deve substituir valores de colunas e parâmetros protegidos (`password`, `password_hash`, `hash`, `token`, `secret`, `key`) por `[REDACTED]`, tanto em execuções unitárias quanto em lotes (`executemany` no `db-seed` e importação de planilhas).
+- **Escopo de Eventos, Transações, Migrações e Fallback de Testes no Log SQL**: O listener é acoplado exclusivamente à `engine` da aplicação (`before_cursor_execute` e `after_cursor_execute`), operando de forma idêntica no PostgreSQL 16 e no fallback SQLite de testes unitários. Comandos implícitos de controle de transação (`BEGIN`, `COMMIT`, `ROLLBACK`), consultas de healthcheck (`SELECT 1`) e execuções externas de DDL via CLI do Alembic não emitem linhas `[SQL QUERY]`, mantendo o log limpo e estritamente focado nas consultas DML/DQL da aplicação.
 
 ## Requirements *(mandatory)*
 
@@ -110,6 +136,7 @@ Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sis
 - **FR-009**: O sistema DEVE registrar manutenções em `asset_maintenances` contendo `asset_id`, `registered_by_id`, `maintenance_type`, `service_provider` opcional, descrição textual, custo monetário e data da manutenção.
 - **FR-010**: O sistema DEVE fornecer comandos CLI (`uv run db-create` e `uv run db-seed`) registrados como entrypoints em `pyproject.toml` para criar tabelas/migrações e popular dados completos do SisPatrimonio.
 - **FR-011**: O sistema DEVE fornecer arquivos SQL nativos (`database/schema.sql` e `database/populate.sql`) contendo DDL e DML prontos para execução em clientes SQL padrão para PostgreSQL 16.
+- **FR-012**: O sistema DEVE disponibilizar um listener de eventos de execução na `engine` do SQLAlchemy (`before_cursor_execute` e `after_cursor_execute`, compatível com PostgreSQL 16 e SQLite em testes) controlado pela variável de ambiente `LOG_SQL_STATEMENTS` (habilitada por padrão em desenvolvimento `True` e desabilitada em produção `False`) para exibir nos logs do backend todas as queries DML/DQL (`SELECT` em listagens/consultas, `INSERT` em cadastros/movimentações/manutenções e `UPDATE` em edições/renumerações/soft-delete) no formato padronizado `[SQL QUERY] (<duração>ms) SQL: <statement> | PARAMS: <params>`, com parâmetros higienizados (mascaramento automático de `password`, `hash`, `token`, `secret`, `key` via `[REDACTED]` em execuções simples ou em lote) e filtragem estrita de consultas de healthcheck (`SELECT 1`) e ruídos de controle transacional (`BEGIN`/`COMMIT`/`ROLLBACK`).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -130,6 +157,7 @@ Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sis
 - **SC-003**: 100% das operações de renumeração de patrimônio registradas atomicamente sem perda de rastreabilidade do identificador anterior.
 - **SC-004**: Zero violações das restrições de integridade referencial e unicidade física composta em toda a suíte de testes automatizados.
 - **SC-005**: Comandos `uv run db-create` e `uv run db-seed` executam sem erros, populando com sucesso todas as entidades do modelo e mantendo cobertura de código em 100%.
+- **SC-006**: 100% das operações SQL (`SELECT`, `INSERT`, `UPDATE`/soft-delete) geradas pelas rotas da API (`/api/v1/*`) e comandos são visualizáveis no formato `[SQL QUERY] (<ms>ms) SQL: ...` e verificadas por testes de integração automatizados, com zero vazamento de queries automáticas de healthcheck (`SELECT 1`) ou credenciais em texto claro.
 
 ## Assumptions
 

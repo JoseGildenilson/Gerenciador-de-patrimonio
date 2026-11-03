@@ -123,6 +123,22 @@ uv run pytest tests/test_migrations.py -k "test_alembic_migrations_lifecycle" -v
 
 ---
 
+### 2.5. Validação de Observabilidade e Logs de SQL
+1. **Ativar o Servidor com Variável de Log**:
+   ```bash
+   LOG_SQL_STATEMENTS=true uv run uvicorn src.main:app --port 8000
+   ```
+2. **Executar Requisição de Consulta ou Criação**:
+   ```bash
+   curl -X GET http://localhost:8000/api/v1/assets
+   ```
+3. **Resultado Esperado no Terminal**:
+   - Bloco formatado com `[SQL QUERY]`, query SQL gerada, parâmetros e duração em milissegundos.
+   - Consultas periódicas de healthcheck (`SELECT 1`) não aparecem no log.
+   - Parâmetros com campos protegidos (`password_hash`) exibem o valor `[REDACTED]`.
+
+---
+
 ## 3. Validação da Cobertura de Testes (100% Quality Gate)
 ```bash
 PYTHONPATH=. uv run --extra dev pytest --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=100

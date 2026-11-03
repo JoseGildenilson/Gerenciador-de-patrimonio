@@ -10,7 +10,8 @@ Evoluir a arquitetura de persistência e camadas de domínio da aplicação para
 1. Implementar Enums nativos PostgreSQL (`user_role`, `asset_status`, `maintenance_type`).
 2. Implementar as 7 tabelas normalizadas (`users`, `locations`, `categories`, `assets`, `patrimony_history`, `asset_movements`, `asset_maintenances`).
 3. Suportar restrição de unicidade composta `uq_locations_physical_space`, regras de serial obrigatório por categoria, depreciação contábil (`residual_value_rate`, `useful_life_months`), campo `specs` em JSONB e renumeração de patrimônio atômica.
-4. Preservar 100% de cobertura de testes, Clean Architecture (FastAPI -> Use Cases -> Repositories -> SQLAlchemy 2.0) e migração versionada no Alembic.
+4. Disponibilizar observabilidade e logs de queries descritivos e não poluídos via listener SQLAlchemy condicionado a `LOG_SQL_STATEMENTS`, filtrando healthchecks e mascarando dados sensíveis.
+5. Preservar 100% de cobertura de testes, Clean Architecture (FastAPI -> Use Cases -> Repositories -> SQLAlchemy 2.0) e migração versionada no Alembic.
 
 ## Technical Context
 
@@ -21,6 +22,8 @@ Evoluir a arquitetura de persistência e camadas de domínio da aplicação para
 **Storage**: PostgreSQL 16 (SGBD obrigatório de produção e desenvolvimento; fallback in-memory SQLite para testes unitários locais rápidos).
 
 **Testing**: Pytest 9+, pytest-cov 7+, httpx 0.27+ com Quality Gate inegociável de 100% de cobertura de branches (`--cov-fail-under=100`).
+
+**Observability/Logging**: SQLAlchemy event listeners (`before_cursor_execute` e `after_cursor_execute`) condicionados à configuração `LOG_SQL_STATEMENTS` (padrão `True` em dev, `False` em prod), formatando queries com tempo em ms, filtrando `SELECT 1` e mascarando credenciais e hashes via `[REDACTED]`.
 
 **Target Platform**: Linux / Docker containers com usuários não-privilegiados (`appuser` UID 10001).
 

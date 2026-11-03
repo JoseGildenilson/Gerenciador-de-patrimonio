@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from src.api.dependencies import get_current_user, require_tecnico_or_admin
 from src.core.database import get_db
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BusinessRuleError, NotFoundError
 from src.domain.models import User
 from src.domain.schemas import (
     AssetMovementCreate,
@@ -49,6 +49,8 @@ def create_asset_movement(
         return use_case.create_movement(id, data, current_user.id)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post(
@@ -99,3 +101,5 @@ def create_asset_maintenance(
         return use_case.create_maintenance(id, data, current_user.id)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

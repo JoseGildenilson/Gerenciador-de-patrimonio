@@ -188,6 +188,18 @@ async def test_asset_api_lifecycle_validation_and_filters(
     )
     assert resp_update_dup_serial.status_code == 409
 
+    # Falha ao remover serial de ativo cuja categoria exige serial (HTTP 400 - FR-005)
+    resp_update_clear_serial = await client.put(
+        f"/api/v1/assets/{asset_id}", json={"serial_number": ""}
+    )
+    assert resp_update_clear_serial.status_code == 400
+
+    # Falha ao mudar ativo sem serial para categoria que exige serial sem informar serial (HTTP 400 - FR-005)
+    resp_update_cat_req_serial = await client.put(
+        f"/api/v1/assets/{resp_mob.json()['id']}", json={"category_id": cat_req_serial.id}
+    )
+    assert resp_update_cat_req_serial.status_code == 400
+
     # 404 nos relacionamentos de update
     assert (
         await client.put(f"/api/v1/assets/{asset_id}", json={"category_id": 99999})

@@ -63,6 +63,8 @@ import src.core.database as core_db  # noqa: E402
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 core_db.engine = test_engine
 core_db.SessionLocal = TestingSessionLocal
+core_db.register_sql_logging_listeners(test_engine)
+settings.LOG_SQL_STATEMENTS = False
 
 
 @pytest.fixture(scope="session")
@@ -160,7 +162,9 @@ def test_catalogs(db_session: Session):
     def _get_or_create_loc(building: str, floor: str, sector: str):
         item = (
             db_session.query(Location)
-            .filter(Location.building == building, Location.floor == floor, Location.sector == sector)
+            .filter(
+                Location.building == building, Location.floor == floor, Location.sector == sector
+            )
             .first()
         )
         if not item:

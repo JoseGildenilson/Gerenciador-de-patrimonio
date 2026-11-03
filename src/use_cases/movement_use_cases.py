@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BusinessRuleError, NotFoundError
 from src.domain.models import AssetMovement
 from src.domain.schemas import AssetMovementCreate, AssetMovementResponse
 from src.infrastructure.repositories import (
@@ -38,6 +38,11 @@ class AssetMovementUseCases:
         asset = self.asset_repo.get_by_id(asset_id)
         if not asset:
             raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
+
+        if asset.status == "baixado":
+            raise BusinessRuleError(
+                "Ativo com status 'baixado' não pode sofrer movimentações sem restauração prévia."
+            )
 
         # Validar origem
         origin_loc = self.location_repo.get_by_id(data.origin_location_id)

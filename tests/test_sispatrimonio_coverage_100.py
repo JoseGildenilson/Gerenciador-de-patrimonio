@@ -305,6 +305,7 @@ def test_movement_and_maintenance_use_cases_rollbacks(db_session: Session, creat
     assert mov.from_user_id == user.id
 
     # Rollback no create_movement
+    asset.status = "disponivel"
     mock_db = MagicMock(spec=Session)
     mock_db.commit.side_effect = RuntimeError("Mov commit fail")
     mock_mov_uc = AssetMovementUseCases(mock_db)
@@ -317,6 +318,7 @@ def test_movement_and_maintenance_use_cases_rollbacks(db_session: Session, creat
             moved_by_id=user.id,
         )
     mock_db.rollback.assert_called_once()
+    asset.status = "disponivel"
 
     # Rollback no accept_custody_term
     mock_db.reset_mock()
@@ -406,9 +408,7 @@ async def test_auth_routes_coverage_revoked_and_logout(client, create_test_user)
     user = create_test_user(email="logout_cov@empresa.com", password="Password123!")
     from src.core.security import create_access_token, create_refresh_token, revoke_token
 
-    access_tok = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role}
-    )
+    access_tok = create_access_token({"sub": str(user.id), "email": user.email, "role": user.role})
     refresh_tok = create_refresh_token({"sub": str(user.id)})
 
     # Teste de refresh com token já revogado (linha 156)

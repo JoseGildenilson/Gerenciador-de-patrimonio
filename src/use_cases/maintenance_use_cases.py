@@ -1,7 +1,7 @@
 """Casos de uso para manutenções preventivas e corretivas de ativos."""
 
 from sqlalchemy.orm import Session
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BusinessRuleError, NotFoundError
 from src.domain.models import AssetMaintenance
 from src.domain.schemas import AssetMaintenanceCreate, AssetMaintenanceResponse
 from src.infrastructure.repositories import (
@@ -33,6 +33,11 @@ class MaintenanceUseCases:
         asset = self.asset_repo.get_by_id(asset_id)
         if not asset:
             raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
+
+        if asset.status == "baixado":
+            raise BusinessRuleError(
+                "Ativo com status 'baixado' não pode receber novas manutenções sem restauração prévia."
+            )
 
         maintenance = AssetMaintenance(
             asset_id=asset.id,

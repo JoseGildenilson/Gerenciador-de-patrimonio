@@ -138,3 +138,11 @@ async def test_asset_maintenance_api_lifecycle(
     assert (
         await client.post("/api/v1/assets/99999/maintenances", json=maint_payload)
     ).status_code == 404
+
+    # 5. Bloqueio de manutenção em ativo com status baixado (HTTP 400 - Edge Case 3)
+    asset.status = "baixado"
+    db_session.flush()
+    resp_maint_baixado = await client.post(
+        f"/api/v1/assets/{asset.id}/maintenances", json=maint_payload
+    )
+    assert resp_maint_baixado.status_code == 400

@@ -16,6 +16,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        postgresql.ENUM("administrador", "tecnico", "colaborador", name="user_role").create(
+            bind, checkfirst=True
+        )
+        postgresql.ENUM(
+            "disponivel", "em_uso", "em_manutencao", "baixado", name="asset_status"
+        ).create(bind, checkfirst=True)
+        postgresql.ENUM("preventiva", "corretiva", name="maintenance_type").create(
+            bind, checkfirst=True
+        )
+
     # 1. Update users table with name, updated_at, and password_hash
     op.add_column("users", sa.Column("name", sa.String(length=255), server_default="Usuário", nullable=False))
     op.add_column("users", sa.Column("password_hash", sa.String(length=255), server_default="", nullable=False))
@@ -168,3 +180,9 @@ def downgrade() -> None:
     op.drop_column("users", "updated_at")
     op.drop_column("users", "password_hash")
     op.drop_column("users", "name")
+
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        postgresql.ENUM(name="maintenance_type").drop(bind, checkfirst=True)
+        postgresql.ENUM(name="asset_status").drop(bind, checkfirst=True)
+        postgresql.ENUM(name="user_role").drop(bind, checkfirst=True)

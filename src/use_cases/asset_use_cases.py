@@ -149,6 +149,8 @@ class AssetUseCases:
             if not cat:
                 raise NotFoundError(f"Categoria com ID {data.category_id} não encontrada.")
             asset.category_id = data.category_id
+        else:
+            cat = self.cat_repo.get_by_id(asset.category_id)
 
         if data.location_id is not None:
             loc = self.loc_repo.get_by_id(data.location_id)
@@ -169,6 +171,11 @@ class AssetUseCases:
                 if existing_s and existing_s.id != asset_id:
                     raise ConflictError(f"Número de série '{clean_serial}' já cadastrado.")
             asset.serial_number = clean_serial
+
+        if cat.requires_serial_number and not asset.serial_number:
+            raise BusinessRuleError(
+                f"A categoria '{cat.name}' exige o preenchimento obrigatório do número de série."
+            )
 
         if data.description is not None:
             asset.description = data.description.strip()

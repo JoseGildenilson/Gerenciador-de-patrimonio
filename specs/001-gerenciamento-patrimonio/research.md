@@ -58,6 +58,19 @@
 
 ---
 
+### 1.6. Observabilidade e Logging Descritivo de Operações de Banco de Dados
+- **Contexto**: Necessidade de demonstrar com clareza em aula e apresentações acadêmicas as operações SQL e transações em tempo real no terminal, sem poluição visual.
+- **Decisão**: Implementar listeners de eventos do SQLAlchemy (`event.listens_for(engine, "before_cursor_execute")` e `after_cursor_execute`) em `src/core/database.py`:
+  1. **Filtro de Ruído**: Ignorar comandos de healthcheck automáticos (`SELECT 1`).
+  2. **Formatação Limpa**: Imprimir prefixo `[SQL QUERY]`, a query formatada, parâmetros e a duração em milissegundos.
+  3. **Segurança de Credenciais**: Higienizar parâmetros sensíveis (`password_hash`, senhas, tokens), substituindo seus valores por `[REDACTED]`.
+  4. **Ativação Segura**: Controlar o listener através da variável de ambiente `LOG_SQL_STATEMENTS` (ativa por padrão em desenvolvimento e desativada em produção).
+- **Alternativas Consideradas**:
+  - `echo=True` global no SQLAlchemy: Descartado por gerar poluição excessiva com checkouts de pool de conexão, rollbacks automáticos de leitura e ausência de mascaramento de senhas.
+  - Log nativo do PostgreSQL (`log_statement = 'all'`): Descartado porque os healthchecks do Docker (`pg_isready` e `SELECT 1` a cada 5 segundos) inundam o console.
+
+---
+
 ## 2. Resumo de Decisões Prontas para Fase 1
 
 | Componente | Decisão Final | Rationale |
@@ -67,3 +80,4 @@
 | **Índice de Localização** | `uq_locations_physical_space` | Unicidade de espaço físico prevenindo duplicatas de salas/setores. |
 | **Depreciação** | `Decimal` com `Numeric(5,2)` | Precisão contábil para vida útil e valor residual. |
 | **Renumeração** | Transação atômica em `patrimony_history` | Rastreabilidade total exigida na auditoria patrimonial. |
+| **SQL Logging** | Listener SQLAlchemy filtrando `SELECT 1` | Visibilidade clara com métrica de tempo em ms e mascaramento de senhas. |
