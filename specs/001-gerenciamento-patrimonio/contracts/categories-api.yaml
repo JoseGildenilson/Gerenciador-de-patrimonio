@@ -66,6 +66,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CategoryResponse'
+    delete:
+      summary: Excluir categoria sem ativos vinculados
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Categoria excluída com sucesso
+        '404':
+          description: Categoria não encontrada
+        '409':
+          description: Categoria possui ativos vinculados (violação ON DELETE RESTRICT)
 
 components:
   schemas:

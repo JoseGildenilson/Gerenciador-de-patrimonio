@@ -3,7 +3,8 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from src.domain.models import AssetStatus, MaintenanceTypeEnum
 
 
 # --- Schemas de Usuários e Autenticação ---
@@ -27,6 +28,17 @@ class UserResponse(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserSummaryResponse(BaseModel):
+    """Schema resumido de usuário para exibição em custódia, movimentações e manutenções."""
+
+    id: int
+    name: str = "Usuário"
+    email: str
+    role: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -144,6 +156,83 @@ class LocationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# --- Schemas de Movimentações Físicas ---
+
+
+class AssetMovementCreate(BaseModel):
+    """Schema para registro de movimentação física/transferência de ativo."""
+
+    origin_location_id: int
+    dest_location_id: int | None = None
+    from_user_id: int | None = None
+    to_user_id: int | None = None
+    movement_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    notes: str | None = None
+
+
+class AssetMovementResponse(BaseModel):
+    """Schema de resposta para movimentação de ativo."""
+
+    id: int
+    asset_id: int
+    origin_location_id: int
+    dest_location_id: int | None = None
+    from_user_id: int | None = None
+    to_user_id: int | None = None
+    moved_by_id: int
+    term_accepted_at: datetime | None = None
+    movement_date: datetime
+    notes: str | None = None
+    origin_location: LocationResponse | None = None
+    dest_location: LocationResponse | None = None
+    from_user: UserSummaryResponse | None = None
+    to_user: UserSummaryResponse | None = None
+    moved_by: UserSummaryResponse | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Schemas de Manutenções Técnicas ---
+
+
+class AssetMaintenanceCreate(BaseModel):
+    """Schema para lançamento de manutenção preventiva ou corretiva."""
+
+    maintenance_type: MaintenanceTypeEnum = Field(..., description="preventiva ou corretiva")
+    service_provider: str | None = Field(default=None, max_length=150)
+    description: str = Field(..., min_length=1)
+    cost: Decimal | None = Field(default=None, ge=Decimal("0"))
+    maintenance_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class AssetMaintenanceUpdate(BaseModel):
+    """Schema para atualização de manutenção preventiva ou corretiva."""
+
+    maintenance_type: MaintenanceTypeEnum | None = None
+    service_provider: str | None = Field(default=None, max_length=150)
+    description: str | None = Field(default=None, min_length=1)
+    cost: Decimal | None = Field(default=None, ge=Decimal("0"))
+    maintenance_date: datetime | None = None
+
+
+class AssetMaintenanceResponse(BaseModel):
+    """Schema de resposta para manutenção de ativo."""
+
+    id: int
+    asset_id: int
+    registered_by_id: int
+    maintenance_type: str
+    service_provider: str | None = None
+    description: str
+    cost: Decimal | None = None
+    maintenance_date: datetime
+    registered_by: UserSummaryResponse | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # --- Schemas de Ativos Patrimoniais (Assets) ---
 
 
@@ -160,7 +249,7 @@ class AssetCreate(BaseModel):
     model: str | None = Field(default=None, max_length=100)
     purchase_cost: Decimal | None = Field(default=None, ge=Decimal("0"))
     purchase_date: date | None = None
-    status: str = Field(default="disponivel")
+    status: AssetStatus = Field(default=AssetStatus.DISPONIVEL)
     specs: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -176,7 +265,7 @@ class AssetUpdate(BaseModel):
     model: str | None = Field(default=None, max_length=100)
     purchase_cost: Decimal | None = Field(default=None, ge=Decimal("0"))
     purchase_date: date | None = None
-    status: str | None = None
+    status: AssetStatus | None = None
     specs: dict[str, Any] | None = None
 
 
@@ -189,6 +278,7 @@ class PatrimonyHistoryResponse(BaseModel):
     new_patrimony_number: str
     reason: str
     changed_by_id: int
+    changed_by: UserSummaryResponse | None = None
     changed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -217,6 +307,10 @@ class AssetResponse(BaseModel):
     purchase_date: date | None = None
     status: str
     specs: dict[str, Any] = Field(default_factory=dict)
+    category: CategoryResponse | None = None
+    location: LocationResponse | None = None
+    assigned_user: UserSummaryResponse | None = None
+    last_maintenance_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -227,6 +321,8 @@ class AssetDetailResponse(AssetResponse):
     """Schema de resposta detalhada para ativo patrimonial com histórico."""
 
     patrimony_history: list[PatrimonyHistoryResponse] = Field(default_factory=list)
+    movements: list[AssetMovementResponse] = Field(default_factory=list)
+    maintenances: list[AssetMaintenanceResponse] = Field(default_factory=list)
 
 
 class AssetListResponse(BaseModel):
@@ -237,67 +333,6 @@ class AssetListResponse(BaseModel):
     page: int
     limit: int
     pages: int
-
-
-# --- Schemas de Movimentações Físicas ---
-
-
-class AssetMovementCreate(BaseModel):
-    """Schema para registro de movimentação física/transferência de ativo."""
-
-    origin_location_id: int
-    dest_location_id: int | None = None
-    from_user_id: int | None = None
-    to_user_id: int | None = None
-    movement_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    notes: str | None = None
-
-
-class AssetMovementResponse(BaseModel):
-    """Schema de resposta para movimentação de ativo."""
-
-    id: int
-    asset_id: int
-    origin_location_id: int
-    dest_location_id: int | None = None
-    from_user_id: int | None = None
-    to_user_id: int | None = None
-    moved_by_id: int
-    term_accepted_at: datetime | None = None
-    movement_date: datetime
-    notes: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# --- Schemas de Manutenções Técnicas ---
-
-
-class AssetMaintenanceCreate(BaseModel):
-    """Schema para lançamento de manutenção preventiva ou corretiva."""
-
-    maintenance_type: str = Field(..., description="preventiva ou corretiva")
-    service_provider: str | None = Field(default=None, max_length=150)
-    description: str = Field(..., min_length=1)
-    cost: Decimal | None = Field(default=None, ge=Decimal("0"))
-    maintenance_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-class AssetMaintenanceResponse(BaseModel):
-    """Schema de resposta para manutenção de ativo."""
-
-    id: int
-    asset_id: int
-    registered_by_id: int
-    maintenance_type: str
-    service_provider: str | None = None
-    description: str
-    cost: Decimal | None = None
-    maintenance_date: datetime
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Schemas de Importação de Planilha ---

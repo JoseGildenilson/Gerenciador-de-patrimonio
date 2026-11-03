@@ -23,7 +23,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: strin
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  if (requiredRole && user?.role !== requiredRole && user?.role !== 'administrador') {
     return <Navigate to="/dashboard" replace />;
   }
 

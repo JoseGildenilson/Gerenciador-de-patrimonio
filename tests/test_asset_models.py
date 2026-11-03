@@ -1,11 +1,11 @@
-"""Testes de modelos ORM para Category e Asset (T009)."""
+"""Testes de modelos ORM para Category e Asset (T009 / T085)."""
 
 from datetime import date
 from decimal import Decimal
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from src.domain.models import Category, Location, Asset, User
+from src.domain.models import Category, Location, Asset
 
 
 def test_category_and_asset_creation(db_session: Session, create_test_user):
@@ -125,6 +125,39 @@ def test_unique_asset_patrimony_and_serial_constraints(db_session: Session):
         brand="Dell",
     )
     db_session.add(a4)
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+    db_session.rollback()
+
+
+def test_check_constraints_and_fk_ondelete_metadata(db_session: Session):
+    """Valida CheckConstraints de valores positivos/faixas e metadados ON DELETE no ORM (T085)."""
+    bad_cat = Category(name="Cat Inválida", useful_life_months=0)
+    db_session.add(bad_cat)
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+    db_session.rollback()
+
+    bad_rate = Category(name="Taxa Inválida", residual_value_rate=Decimal("150.00"))
+    db_session.add(bad_rate)
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+    db_session.rollback()
+
+    cat = Category(name="Cat Ok")
+    loc = Location(building="Bloco C", floor="1", sector="ADM")
+    db_session.add_all([cat, loc])
+    db_session.flush()
+
+    bad_asset = Asset(
+        patrimony_number="PAT-NEG",
+        description="Custo negativo",
+        category_id=cat.id,
+        location_id=loc.id,
+        brand="Dell",
+        purchase_cost=Decimal("-10.00"),
+    )
+    db_session.add(bad_asset)
     with pytest.raises(IntegrityError):
         db_session.flush()
     db_session.rollback()

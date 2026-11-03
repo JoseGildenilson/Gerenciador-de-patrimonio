@@ -111,6 +111,7 @@ class Location(Base):
             "sector",
             "room_number",
             unique=True,
+            postgresql_nulls_not_distinct=True,
         ),
     )
 
@@ -141,6 +142,17 @@ class Category(Base):
         nullable=False,
     )
 
+    __table_args__ = (
+        CheckConstraint(
+            "useful_life_months IS NULL OR useful_life_months > 0",
+            name="ck_categories_useful_life_positive",
+        ),
+        CheckConstraint(
+            "residual_value_rate >= 0.00 AND residual_value_rate <= 100.00",
+            name="ck_categories_residual_rate_range",
+        ),
+    )
+
     assets: Mapped[list["Asset"]] = relationship("Asset", back_populates="category")
 
 
@@ -155,10 +167,14 @@ class Asset(Base):
         String(100), unique=True, nullable=True, default=None
     )
     description: Mapped[str] = mapped_column(String(255), nullable=False)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=False)
-    location_id: Mapped[int] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
+    )
+    location_id: Mapped[int] = mapped_column(
+        ForeignKey("locations.id", ondelete="RESTRICT"), nullable=False
+    )
     assigned_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True, default=None
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, default=None
     )
     brand: Mapped[str] = mapped_column(String(100), nullable=False)
     model: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
@@ -191,6 +207,17 @@ class Asset(Base):
         nullable=False,
     )
 
+    __table_args__ = (
+        CheckConstraint(
+            "purchase_cost IS NULL OR purchase_cost >= 0.00",
+            name="ck_assets_purchase_cost_non_negative",
+        ),
+        Index("idx_assets_category_id", "category_id"),
+        Index("idx_assets_location_id", "location_id"),
+        Index("idx_assets_assigned_user_id", "assigned_user_id"),
+        Index("idx_assets_status", "status"),
+    )
+
     category: Mapped["Category"] = relationship("Category", back_populates="assets")
     location: Mapped["Location"] = relationship("Location", back_populates="assets")
     assigned_user: Mapped["User | None"] = relationship("User", foreign_keys=[assigned_user_id])
@@ -211,16 +238,22 @@ class PatrimonyHistory(Base):
     __tablename__ = "patrimony_history"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
+    )
     old_patrimony_number: Mapped[str] = mapped_column(String(100), nullable=False)
     new_patrimony_number: Mapped[str] = mapped_column(String(100), nullable=False)
     reason: Mapped[str] = mapped_column(String(255), nullable=False)
-    changed_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    changed_by_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
     changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    __table_args__ = (Index("idx_patrimony_history_asset_id", "asset_id"),)
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="patrimony_histories")
     changed_by: Mapped["User"] = relationship("User", foreign_keys=[changed_by_id])
@@ -232,18 +265,24 @@ class AssetMovement(Base):
     __tablename__ = "asset_movements"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
-    origin_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
+    )
+    origin_location_id: Mapped[int] = mapped_column(
+        ForeignKey("locations.id", ondelete="RESTRICT"), nullable=False
+    )
     dest_location_id: Mapped[int | None] = mapped_column(
-        ForeignKey("locations.id"), nullable=True, default=None
+        ForeignKey("locations.id", ondelete="RESTRICT"), nullable=True, default=None
     )
     from_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True, default=None
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, default=None
     )
     to_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True, default=None
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, default=None
     )
-    moved_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    moved_by_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
     term_accepted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
@@ -253,6 +292,8 @@ class AssetMovement(Base):
         nullable=False,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+
+    __table_args__ = (Index("idx_asset_movements_asset_id", "asset_id"),)
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="movements")
     origin_location: Mapped["Location"] = relationship(
@@ -272,8 +313,12 @@ class AssetMaintenance(Base):
     __tablename__ = "asset_maintenances"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), nullable=False)
-    registered_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
+    )
+    registered_by_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
     maintenance_type: Mapped[str] = mapped_column(
         SAEnum(
             MaintenanceTypeEnum,
@@ -296,6 +341,14 @@ class AssetMaintenance(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "cost IS NULL OR cost >= 0.00",
+            name="ck_asset_maintenances_cost_non_negative",
+        ),
+        Index("idx_asset_maintenances_asset_id", "asset_id"),
     )
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="maintenances")

@@ -1,7 +1,8 @@
-export type UserRole = 'tecnico' | 'colaborador' | string;
+export type UserRole = 'administrador' | 'tecnico' | 'colaborador' | string;
 
 export interface User {
   id: number;
+  name?: string;
   email: string;
   role: UserRole;
   is_active: boolean;

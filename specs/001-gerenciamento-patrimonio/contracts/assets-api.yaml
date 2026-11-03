@@ -61,6 +61,62 @@ paths:
         '409':
           description: Conflito de unicidade de patrimônio ou serial
 
+  /api/v1/assets/export:
+    get:
+      summary: Exportar inventário filtrado em planilha Excel (.xlsx)
+      parameters:
+        - name: category_id
+          in: query
+          schema: { type: integer }
+        - name: location_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [disponivel, em_uso, em_manutencao, baixado] }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Arquivo Excel gerado
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/assets/suggestions:
+    get:
+      summary: Sugestões de autocomplete para campos de ativos
+      parameters:
+        - name: field
+          in: query
+          required: true
+          schema: { type: string, enum: [patrimony_number, serial_number, brand, model, description] }
+        - name: query
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+
+  /api/v1/users:
+    get:
+      summary: Listar usuários ativos elegíveis para custódia
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSummaryResponse'
+
   /api/v1/assets/{id}:
     get:
       summary: Obter detalhes do ativo
@@ -96,6 +152,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetResponse'
+    delete:
+      summary: Desativar ativo logicamente (soft delete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Ativo desativado com sucesso
+        '404':
+          description: Ativo não encontrado
 
   /api/v1/assets/{id}/renumber:
     post:
@@ -156,7 +224,16 @@ components:
         model: { type: string, nullable: true }
         purchase_cost: { type: number, format: float, nullable: true }
         purchase_date: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [disponivel, em_uso, em_manutencao, baixado] }
         specs: { type: object }
+
+    UserSummaryResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [administrador, tecnico, colaborador] }
 
     AssetResponse:
       type: object
@@ -172,8 +249,13 @@ components:
         model: { type: string, nullable: true }
         purchase_cost: { type: number, nullable: true }
         purchase_date: { type: string, nullable: true }
-        status: { type: string }
+        status: { type: string, enum: [disponivel, em_uso, em_manutencao, baixado] }
         specs: { type: object }
+        category: { type: object, nullable: true }
+        location: { type: object, nullable: true }
+        assigned_user:
+          $ref: '#/components/schemas/UserSummaryResponse'
+        last_maintenance_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -186,6 +268,14 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/PatrimonyHistoryResponse'
+            movements:
+              type: array
+              items:
+                type: object
+            maintenances:
+              type: array
+              items:
+                type: object
 
     PatrimonyHistoryResponse:
       type: object

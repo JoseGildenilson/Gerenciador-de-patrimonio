@@ -32,7 +32,7 @@ O domínio e os casos de uso NUNCA devem importar bibliotecas ou tipos de transp
 
 ### III. Persistência Exclusiva com SQLAlchemy 2.0 e Banimento de Raw SQL
 O acesso e manipulação de dados no banco DEVE ocorrer exclusivamente por meio da API idiomática do SQLAlchemy 2.0 (ORM e Core declarativo). É ESTRITAMENTE PROIBIDO o uso de SQL puro (*raw SQL* via `text()`, `cursor.execute()` ou comandos DDL/DML em strings literais) no código da aplicação.
-Entidades podem atuar diretamente como modelos de persistência. Para tipos de dados de rede, devem ser utilizados tipos abstratos e agnósticos a dialeto (`IPAddressType`, `MACAddressType` em `src/domain/models.py`) que compilam nativamente para `INET` e `MACADDR` no PostgreSQL e recaem com segurança para `String` em bancos de teste.
+Entidades podem atuar diretamente como modelos de persistência. Para especificações dinâmicas e tipos enumerados (`specs` e `Enum` em `src/domain/models.py`), devem ser utilizados tipos compatíveis entre dialetos (`JSON().with_variant(JSONB, "postgresql")` e `sa.Enum(..., native_enum=True)`) que compilam nativamente no PostgreSQL 16 e recaem com segurança em bancos de teste.
 *Rationale:* Previne vulnerabilidades de injeção de SQL, viabiliza checagem estática de integridade relacional e assegura compatibilidade entre ambientes.
 
 ### IV. Controle Transacional Delimitado no Caso de Uso
@@ -43,9 +43,9 @@ Os repositórios (`src/infrastructure/repositories.py`) NUNCA devem executar `co
 ### V. Governança Estrita do Banco de Dados via Migrações Alembic
 Toda alteração estrutural no banco de dados (criação de tabelas, exclusão de colunas, constraints e índices) DEVE ser implementada obrigatoriamente através de migrações versionadas no Alembic (`alembic/versions/`). É vedado o uso de `Base.metadata.create_all()` para atualizar esquemas em ambientes persistidos.
 Toda migração DEVE ser idempotente e conter tanto a função `upgrade()` quanto a função `downgrade()`. As convenções de indexação existentes DEVEM ser seguidas:
-- Unicidade permanente *case-insensitive* (`LOWER(col)`) para identificadores canônicos que permanecem reservados mesmo após soft delete (`patrimony_number`, `serial_number`, catálogos).
-- Unicidade condicional parcial (`WHERE deleted_at IS NULL`) para identificadores operacionais reutilizáveis (`hostname`, `ip_address`, `mac_address`, `printer_identifier`).
-- Bloqueio de concorrência otimista via coluna `version_id` em `Equipment`.
+- Unicidade permanente *case-insensitive* (`LOWER(col)`) para identificadores canônicos que permanecem reservados mesmo após soft delete (`patrimony_number`, `serial_number`, `categories.name`, `users.email`).
+- Unicidade espacial composta (`uq_locations_physical_space` com `NULLS NOT DISTINCT`) para localizações físicas (`building`, `floor`, `sector`, `room_number`).
+- Rastreabilidade imutável de renumeração patrimonial via tabela `patrimony_history`.
 *Rationale:* Assegura reprodutibilidade, auditabilidade de histórico de schema e alinhamento transparente entre desenvolvimento, CI e produção.
 
 ### VI. Cobertura de Código de 100% e Quality Gates Inegociáveis
@@ -62,13 +62,13 @@ Qualquer implementação ou modificação deve ater-se com rigor ao escopo delim
 
 A base técnica do projeto é padronizada e deve ser rigorosamente respeitada:
 
-- **Backend:** Python 3.13+, FastAPI, SQLAlchemy 2.0 (ORM/Core), Alembic, Pydantic v2, uv, openpyxl, psycopg2-binary, Argon2-cffi (hashing de senhas), PyJWT (autenticação JWT) e Cryptography Fernet (para encriptação simétrica de dados sensíveis como `windows_product_key`).
+- **Backend:** Python 3.13+, FastAPI, SQLAlchemy 2.0 (ORM/Core), Alembic, Pydantic v2, uv, openpyxl, psycopg2-binary, Argon2-cffi (hashing de senhas) e PyJWT (autenticação JWT).
 - **Frontend:** React 18, TypeScript 5+, Vite, Tailwind CSS 3, Lucide React, Axios (configurado com `withCredentials: true`), React Router v7.
 - **Banco de Dados:** PostgreSQL 16 (padrão obrigatório para desenvolvimento, homologação e produção). Instância SQLite in-memory é admitida única e exclusivamente como contingência rápida para execução de testes unitários locais onde o PostgreSQL não estiver acessível.
 - **DevSecOps e Segurança de Execução:**
   - Build multi-stage enxuto em Dockerfiles.
   - Execução sob usuários não-privilegiados (`appuser` UID 10001 no backend e `nginx-unprivileged` porta 8080 no frontend).
-  - Em produção, isolamento total das portas do banco (`5432`) e da API (`8000`) dentro da rede interna do Docker (`internal-net`), expondo unicamente o Nginx.
+  - Em produção, isolamento total das portas do banco (`5432`) e da API (`8000`) dentro da rede interna do Docker (`patrimonio_net`), expondo unicamente o Nginx.
   - Sanitização obrigatória de entradas em planilhas para prevenir ataques de Formula Injection (CWE-1236).
 
 ## Procedimentos de Testes, Validação e CI/CD
@@ -98,4 +98,4 @@ A Constituição do Projeto é o documento de maior hierarquia normativa e técn
 3. **Verificação Mandatória (Spec Kit):** Todo plano de implementação gerado pelo Spec Kit (`plan.md`) e todo conjunto de tarefas (`tasks.md`) DEVE ser auditado contra esta Constituição antes do início da codificação.
 4. **Resolução de Conflitos:** Ao identificar conflito entre uma demanda funcional em `.spec/features/` e os princípios constitucionais, a implementação deve ser pausada e a divergência apontada formalmente para resolução antes de prosseguir.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-13 | **Last Amended**: 2026-10-22
+**Version**: 1.0.1 | **Ratified**: 2026-08-13 | **Last Amended**: 2026-11-03

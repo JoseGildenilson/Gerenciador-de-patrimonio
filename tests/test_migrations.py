@@ -85,6 +85,21 @@ def test_alembic_migrations_lifecycle(tmp_path):
         assert "equipment_movements" not in reapplied_tables
         assert "equipment_maintenances" not in reapplied_tables
         assert "login_attempts" not in reapplied_tables
+
+        # 4. Verifica índices de performance e FKs com ON DELETE (T085)
+        asset_indexes = {idx["name"] for idx in inspector.get_indexes("assets")}
+        assert "idx_assets_category_id" in asset_indexes
+        assert "idx_assets_location_id" in asset_indexes
+        assert "idx_assets_assigned_user_id" in asset_indexes
+        assert "idx_assets_status" in asset_indexes
+
+        asset_fks = {
+            tuple(fk["constrained_columns"]): fk.get("options", {}).get("ondelete")
+            for fk in inspector.get_foreign_keys("assets")
+        }
+        assert asset_fks.get(("category_id",)) == "RESTRICT"
+        assert asset_fks.get(("location_id",)) == "RESTRICT"
+        assert asset_fks.get(("assigned_user_id",)) == "SET NULL"
         engine.dispose()
     finally:
         if admin_engine:

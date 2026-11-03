@@ -44,8 +44,16 @@ def extract_and_sanitize_params(context: Any, raw_parameters: Any) -> Any:
     return sanitize_sql_params(raw_parameters)
 
 
+_OP_BADGES = {
+    "INSERT": ("\033[1;32m🟢 [SQL QUERY] [INSERT]\033[0m", "\033[32m"),
+    "SELECT": ("\033[1;36m🔵 [SQL QUERY] [SELECT]\033[0m", "\033[36m"),
+    "UPDATE": ("\033[1;33m🟡 [SQL QUERY] [UPDATE]\033[0m", "\033[33m"),
+    "DELETE": ("\033[1;31m🔴 [SQL QUERY] [DELETE]\033[0m", "\033[31m"),
+}
+
+
 def register_sql_logging_listeners(target_engine: Any) -> None:
-    """Registra listeners de SQL para observabilidade e logs de queries no terminal."""
+    """Registra listeners de SQL para observabilidade e logs visuais de queries no terminal."""
 
     @event.listens_for(target_engine, "before_cursor_execute")
     def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
@@ -65,10 +73,18 @@ def register_sql_logging_listeners(target_engine: Any) -> None:
         duration_ms = (time.perf_counter() - start_time) * 1000 if start_time else 0.0
         sanitized = extract_and_sanitize_params(context, parameters)
 
-        msg = f"[SQL QUERY] ({duration_ms:.2f}ms) SQL: {clean_stmt}"
+        op = (clean_stmt.split() + ["QUERY"])[0].upper()
+        badge, stmt_color = _OP_BADGES.get(
+            op, (f"\033[1;35m🟣 [SQL QUERY] [{op}]\033[0m", "\033[35m")
+        )
+
+        header = f"\033[90m┌──\033[0m {badge} \033[1;33m⏱️ {duration_ms:.2f}ms\033[0m \033[90m──────────────────────────────────────────\033[0m"
+        body = f"\033[90m│\033[0m \033[1mSQL:\033[0m {stmt_color}{clean_stmt}\033[0m"
         if sanitized:
-            msg += f" | PARAMS: {sanitized}"
-        print(msg, flush=True)
+            body += f"\n\033[90m│\033[0m \033[1m📦 PARAMS:\033[0m {sanitized}"
+        footer = "\033[90m└─────────────────────────────────────────────────────────────\033[0m"
+
+        print(f"{header}\n{body}\n{footer}", flush=True)
 
 
 @compiles(CheckConstraint, "sqlite")

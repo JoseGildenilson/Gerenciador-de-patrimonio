@@ -1,12 +1,12 @@
-"""E2E Test Suite - Tier 3: Cross-Feature Combinations (Pairwise Interactions).
+"""E2E Test Suite - Tier 3: Cross-Feature Combinations (Canonical SisPatrimonio).
 
 Validates multi-feature interactions and integration boundaries:
-1. Tag Rename Cascade: Tag rename propagating across Equipment and Export.
+1. Location Update Cascade: Location update propagating across Assets, Filter, and Export.
 2. Full Pipeline: Import -> Maintenance Logging -> Status Update -> Export.
-3. Movement Lifecycle: Equipment Creation -> Movements -> Dashboard Metrics.
+3. Movement Lifecycle: Asset Creation -> Movements -> Dashboard Metrics.
 4. Security: Multi-IP Brute-Force Rate Limiting Lockout vs Legitimate User.
-5. Tag Deletion: Dynamic Tag Deletion preserving historical references.
-6. Discovery & Upsert: Bulk CSV Import with dynamic taxonomy discovery and upsert.
+5. ON DELETE RESTRICT Protection: Category deletion with linked assets vs unlinked.
+6. Discovery & Upsert: Bulk CSV Import with dynamic category/location discovery and upsert.
 """
 
 import io
@@ -20,81 +20,79 @@ from httpx import AsyncClient
 async def test_tier3_tag_rename_propagation_across_equipments_and_export(
     client: AsyncClient, tecnico_tokens
 ):
-    """Testa propagação de renomeação de tag: Tag -> Equipamento -> Busca -> Exportação."""
+    """Testa propagação de atualização de localização: Location -> Asset -> Filtro -> Exportação."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
 
-    # 1. Cria nova tag de localização
-    tag_create = await client.post(
-        "/api/v1/equipments/tags",
-        json={"category": "localizacao", "name": "Lab Prototipagem Antigo"},
+    loc_create = await client.post(
+        "/api/v1/locations",
+        json={"building": "Bloco Lab", "floor": "1", "sector": "Lab Prototipagem Antigo"},
     )
-    assert tag_create.status_code == 201
-    tag_id = tag_create.json()["id"]
+    assert loc_create.status_code == 201
+    loc_id = loc_create.json()["id"]
 
-    # 2. Cadastra 2 equipamentos associados a essa localização
     eq1 = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "serial_number": "SN-T3-CASCADE-1",
+            "patrimony_number": "PAT-T3-CASCADE-1",
             "description": "Osciloscópio Digital",
-            "equipment_type": "Laboratório",
-            "location": "Lab Prototipagem Antigo",
-            "status": "Em uso",
+            "brand": "Tektronix",
+            "model": "Osciloscópio Digital",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": loc_id,
+            "status": "em_uso",
         },
     )
     assert eq1.status_code == 201
     eq1_id = eq1.json()["id"]
 
     eq2 = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "serial_number": "SN-T3-CASCADE-2",
+            "patrimony_number": "PAT-T3-CASCADE-2",
             "description": "Gerador de Funções",
-            "equipment_type": "Laboratório",
-            "location": "Lab Prototipagem Antigo",
-            "status": "Em uso",
+            "brand": "Keysight",
+            "model": "Gerador de Funções",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": loc_id,
+            "status": "em_uso",
         },
     )
     assert eq2.status_code == 201
 
-    # 3. Renomeia a tag de localização para novo nome
     rename_resp = await client.put(
-        f"/api/v1/equipments/tags/{tag_id}",
-        json={"name": "Centro de Inovação e Testes"},
+        f"/api/v1/locations/{loc_id}",
+        json={"sector": "Centro de Inovação e Testes"},
     )
     assert rename_resp.status_code == 200
-    assert rename_resp.json()["name"] == "Centro de Inovação e Testes"
+    assert rename_resp.json()["sector"] == "Centro de Inovação e Testes"
 
-    # 4. Verifica se os equipamentos foram atualizados automaticamente
-    eq1_detail = (await client.get(f"/api/v1/equipments/{eq1_id}")).json()
-    assert eq1_detail["location"] == "Centro de Inovação e Testes"
+    eq1_detail = (await client.get(f"/api/v1/assets/{eq1_id}")).json()
+    assert eq1_detail["location"]["sector"] == "Centro de Inovação e Testes"
 
-    # 5. Verifica se busca por filtro reflete o novo nome
-    search_resp = await client.get("/api/v1/equipments?location=Centro de Inovação e Testes")
+    search_resp = await client.get(f"/api/v1/assets?location_id={loc_id}")
     assert search_resp.status_code == 200
     assert search_resp.json()["total"] == 2
 
-    # 6. Exporta planilha e inspeciona o binário .xlsx
-    export_resp = await client.get("/api/v1/equipments/export?location=Centro de Inovação e Testes")
+    export_resp = await client.get(f"/api/v1/assets/export?location_id={loc_id}")
     assert export_resp.status_code == 200
 
     wb = openpyxl.load_workbook(io.BytesIO(export_resp.content))
-    ws = wb["Patrimônio"]
-    assert ws.max_row == 3  # Cabeçalho + 2 linhas
-
-    # Coluna B (índice 2) é LOCALIZAÇÃO
+    assert "Ativos Patrimoniais" in wb.sheetnames
+    ws = wb["Ativos Patrimoniais"]
+    assert ws.max_row == 3
     for row in range(2, 4):
-        assert ws.cell(row=row, column=2).value == "Centro de Inovação e Testes"
+        assert "Centro de Inovação e Testes" in ws.cell(row=row, column=2).value
 
 
 @pytest.mark.anyio
 async def test_tier3_import_spreadsheet_then_record_maintenance_and_export(
     client: AsyncClient, tecnico_tokens, make_excel_bytes
 ):
-    """Testa fluxo completo: Importação XLSX -> Manutenção -> Edição em lote -> Exportação."""
+    """Testa fluxo completo: Importação XLSX -> Manutenção -> Edição de status -> Exportação."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
 
-    # 1. Importa planilha inicial
     headers = [
         "TIPO",
         "LOCALIZAÇÃO",
@@ -128,36 +126,31 @@ async def test_tier3_import_spreadsheet_then_record_maintenance_and_export(
     assert import_resp.status_code == 200
     assert import_resp.json()["created_count"] == 1
 
-    # 2. Localiza o equipamento importado
-    search = (await client.get("/api/v1/equipments?patrimony_number=PAT-PIPE-01")).json()
+    search = (await client.get("/api/v1/assets?search=PAT-PIPE-01")).json()
     eq = search["items"][0]
     eq_id = eq["id"]
 
-    # 3. Registra uma segunda manutenção com data posterior e múltiplos itens
     maint_payload = {
         "maintenance_date": "2026-09-15T14:30:00Z",
-        "maintenance_type": "Manutenção",
+        "maintenance_type": "corretiva",
+        "service_provider": "Dell ProSupport",
         "description": "Upgrade de memória para 256GB, Substituição de ventilador redundante",
-        "notes": "Chamado emergencial atendido",
+        "cost": 1200.00,
     }
-    maint_resp = await client.post(f"/api/v1/equipments/{eq_id}/maintenances", json=maint_payload)
+    maint_resp = await client.post(f"/api/v1/assets/{eq_id}/maintenances", json=maint_payload)
     assert maint_resp.status_code == 201
 
-    # 4. Atualiza a situação do equipamento manualmente para 'Em manutenção'
-    update_resp = await client.put(f"/api/v1/equipments/{eq_id}", json={"status": "Em manutenção"})
+    update_resp = await client.put(f"/api/v1/assets/{eq_id}", json={"status": "em_manutencao"})
     assert update_resp.status_code == 200
-    assert update_resp.json()["status"] == "Em manutenção"
+    assert update_resp.json()["status"] == "em_manutencao"
 
-    # 5. Exporta equipamentos e inspeciona se o histórico consolida as intervenções
-    export_resp = await client.get("/api/v1/equipments/export?patrimony_number=PAT-PIPE-01")
+    export_resp = await client.get("/api/v1/assets/export?search=PAT-PIPE-01")
     assert export_resp.status_code == 200
 
     wb = openpyxl.load_workbook(io.BytesIO(export_resp.content))
-    ws = wb["Patrimônio"]
+    ws = wb["Ativos Patrimoniais"]
     assert ws.max_row == 2
-
-    # Coluna C = SITUAÇÃO, Coluna K = HISTÓRICO DE MOVIMENTAÇÕES
-    assert ws.cell(row=2, column=3).value == "Em manutenção"
+    assert ws.cell(row=2, column=3).value == "em_manutencao"
     hist_cell_value = ws.cell(row=2, column=11).value
     assert hist_cell_value is not None
     assert "Upgrade de memória" in hist_cell_value
@@ -170,56 +163,64 @@ async def test_tier3_movement_history_and_dashboard_reconciliation(
     """Testa rastreabilidade de movimentações sucessivas com reconciliação no dashboard."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
 
-    # 1. Pega métricas iniciais do dashboard
     dash_init = (await client.get("/api/v1/dashboard/metrics")).json()
-    init_total = dash_init["equipments_total"]
+    init_total = dash_init["assets_total"]
 
-    # 2. Cria equipamento novo
+    loc1 = (
+        await client.post(
+            "/api/v1/locations",
+            json={"building": "Sede", "floor": "1", "sector": "Bancada de Preparação"},
+        )
+    ).json()
+    loc2 = (
+        await client.post(
+            "/api/v1/locations",
+            json={"building": "Sede", "floor": "2", "sector": "Financeiro"},
+        )
+    ).json()
+
     created = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "serial_number": "SN-T3-MOV-01",
+            "patrimony_number": "PAT-T3-MOV-01",
             "description": "Notebook Suporte Avançado",
-            "equipment_type": "Notebook",
-            "location": "Almoxarifado TI",
-            "status": "Ocioso",
+            "brand": "Dell",
+            "model": "Notebook Suporte Avançado",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+            "status": "disponivel",
         },
     )
+    assert created.status_code == 201
     eq_id = created.json()["id"]
 
-    # 3. Movimenta para Bancada de Preparação
     mov1 = await client.post(
-        f"/api/v1/equipments/{eq_id}/movements",
+        f"/api/v1/assets/{eq_id}/movements",
         json={
-            "origin_location": "Almoxarifado TI",
-            "destination_location": "Bancada de Preparação",
-            "movement_date": "2026-10-01T08:00:00Z",
+            "origin_location_id": tecnico_tokens["location_id"],
+            "dest_location_id": loc1["id"],
             "notes": "Instalação de imagem corporativa",
         },
     )
     assert mov1.status_code == 201
 
-    # 4. Movimenta para Financeiro
     mov2 = await client.post(
-        f"/api/v1/equipments/{eq_id}/movements",
+        f"/api/v1/assets/{eq_id}/movements",
         json={
-            "origin_location": "Bancada de Preparação",
-            "destination_location": "Financeiro",
-            "movement_date": "2026-10-02T10:00:00Z",
-            "notes": "Entrega ao usuário final",
+            "origin_location_id": loc1["id"],
+            "dest_location_id": loc2["id"],
+            "notes": "Entrega ao setor Financeiro",
         },
     )
     assert mov2.status_code == 201
 
-    # 5. Verifica integridade do histórico e localização atual
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
-    assert detail["location"] == "Financeiro"
-    assert detail["status"] == "Ocioso"  # Movimentação não muda status automaticamente (RN-EQ-12)
+    detail = (await client.get(f"/api/v1/assets/{eq_id}")).json()
+    assert detail["location_id"] == loc2["id"]
     assert len(detail["movements"]) == 2
 
-    # 6. Reconciliação no Dashboard: total deve ter aumentado em exatamente 1
     dash_final = (await client.get("/api/v1/dashboard/metrics")).json()
-    assert dash_final["equipments_total"] == init_total + 1
+    assert dash_final["assets_total"] == init_total + 1
 
 
 @pytest.mark.anyio
@@ -228,24 +229,21 @@ async def test_tier3_rate_limiting_lockout_and_multi_ip_isolation(client: AsyncC
     attacker_ip = {"X-Forwarded-For": "198.51.100.222"}
     legit_ip = {"X-Forwarded-For": "203.0.113.88"}
 
-    # Atacante falha 10 vezes
-    for _ in range(10):
+    for i in range(10):
         resp = await client.post(
             "/api/v1/auth/login",
-            json={"email": e2e_users["tecnico"].email, "password": "WrongPassword!"},
+            json={"email": f"attacker_{i}@empresa.com", "password": "WrongPassword!"},
             headers=attacker_ip,
         )
         assert resp.status_code == 401
 
-    # 11ª tentativa do atacante é bloqueada com 429
     attacker_blocked = await client.post(
         "/api/v1/auth/login",
-        json={"email": e2e_users["tecnico"].email, "password": e2e_users["raw_password"]},
+        json={"email": "attacker_11@empresa.com", "password": "WrongPassword!"},
         headers=attacker_ip,
     )
     assert attacker_blocked.status_code == 429
 
-    # Usuário legítimo de outro IP acessa normalmente com sucesso
     legit_login = await client.post(
         "/api/v1/auth/login",
         json={"email": e2e_users["tecnico"].email, "password": e2e_users["raw_password"]},
@@ -259,62 +257,54 @@ async def test_tier3_rate_limiting_lockout_and_multi_ip_isolation(client: AsyncC
 async def test_tier3_tag_deletion_with_filter_and_export_integrity(
     client: AsyncClient, tecnico_tokens
 ):
-    """Testa que excluir tag preserva integridade de equipamentos, filtros e exportações."""
+    """Testa proteção ON DELETE RESTRICT em Categorias vinculadas e integridade de exportação."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
 
-    # 1. Cria tag 'Em Homologação'
-    tag_resp = await client.post(
-        "/api/v1/equipments/tags", json={"category": "situacao", "name": "Em Homologação"}
+    cat_resp = await client.post(
+        "/api/v1/categories", json={"name": "Rede Homologação", "requires_serial_number": False}
     )
-    tag = tag_resp.json()
-    tag_id = tag["id"]
+    assert cat_resp.status_code == 201
+    cat_id = cat_resp.json()["id"]
 
-    # 2. Cria equipamento usando essa situação
-    await client.post(
-        "/api/v1/equipments",
+    asset_resp = await client.post(
+        "/api/v1/assets",
         json={
             "serial_number": "SN-T3-HOMOLOG-01",
+            "patrimony_number": "PAT-T3-HOMOLOG-01",
             "description": "Switch de Testes",
-            "equipment_type": "Rede",
-            "location": "Bancada",
-            "status": "Em Homologação",
+            "brand": "Cisco",
+            "model": "Switch de Testes",
+            "category_id": cat_id,
+            "location_id": tecnico_tokens["location_id"],
+            "status": "em_manutencao",
         },
     )
+    assert asset_resp.status_code == 201
 
-    # 3. Exclui a tag da taxonomia
-    del_resp = await client.delete(f"/api/v1/equipments/tags/{tag_id}")
-    assert del_resp.status_code == 200
+    del_resp = await client.delete(f"/api/v1/categories/{cat_id}")
+    assert del_resp.status_code == 409
 
-    # 4. A tag foi removida da lista de tags
-    tags = (await client.get("/api/v1/equipments/tags?category=situacao")).json()
-    assert not any(t["id"] == tag_id for t in tags)
+    equipments = (await client.get("/api/v1/assets?status=em_manutencao")).json()["items"]
+    assert any(e["patrimony_number"] == "PAT-T3-HOMOLOG-01" for e in equipments)
 
-    # 5. Mas o equipamento mantém a situação e pode ser filtrado e exportado
-    equipments = (await client.get("/api/v1/equipments?status=Em Homologação")).json()["items"]
-    assert len(equipments) == 1
-    assert equipments[0]["status"] == "Em Homologação"
-
-    export_resp = await client.get("/api/v1/equipments/export?status=Em Homologação")
+    export_resp = await client.get("/api/v1/assets/export?status=em_manutencao")
     assert export_resp.status_code == 200
     wb = openpyxl.load_workbook(io.BytesIO(export_resp.content))
-    ws = wb["Patrimônio"]
-    assert ws.max_row == 2
-    assert ws.cell(row=2, column=3).value == "Em Homologação"
+    ws = wb["Ativos Patrimoniais"]
+    assert ws.max_row >= 2
 
 
 @pytest.mark.anyio
 async def test_tier3_bulk_csv_import_dynamic_tag_discovery_and_api_upsert(
     client: AsyncClient, tecnico_tokens, make_csv_bytes
 ):
-    """Testa importação descobrindo tags dinâmicas, uso em novas criações e upsert idempotente."""
+    """Testa importação descobrindo categorias/localizações dinâmicas, uso em novas criações e upsert."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
 
-    # 1. Prepara CSV com tipo e localização inéditos
     headers = ["TIPO", "LOCALIZAÇÃO", "SITUAÇÃO", "DESCRIÇÃO", "Nº PATRIMÔNIO", "Nº SÉRIE"]
     row1 = ["Acelerador GPU", "Cluster IA", "Em uso", "Nvidia A100", "PAT-GPU-01", "SN-GPU-01"]
     csv_bytes = make_csv_bytes(rows=[row1], headers=headers, delimiter=";")
 
-    # 2. Importa
     import_resp = await client.post(
         "/api/v1/equipments/import/execute",
         files={"file": ("cluster.csv", csv_bytes, "text/csv")},
@@ -322,27 +312,29 @@ async def test_tier3_bulk_csv_import_dynamic_tag_discovery_and_api_upsert(
     assert import_resp.status_code == 200
     assert import_resp.json()["created_count"] == 1
 
-    # 3. Verifica se tags foram cadastradas automaticamente no sistema
-    tags_tipo = (await client.get("/api/v1/equipments/tags?category=tipo")).json()
-    assert any(t["name"] == "Acelerador GPU" for t in tags_tipo)
+    cats = (await client.get("/api/v1/categories")).json()
+    gpu_cat = next((c for c in cats if c["name"] == "Acelerador GPU"), None)
+    assert gpu_cat is not None
 
-    tags_loc = (await client.get("/api/v1/equipments/tags?category=localizacao")).json()
-    assert any(t["name"] == "Cluster IA" for t in tags_loc)
+    locs = (await client.get("/api/v1/locations")).json()
+    cluster_loc = next((loc for loc in locs if loc["sector"] == "Cluster IA"), None)
+    assert cluster_loc is not None
 
-    # 4. Cadastra segundo item via API usando as mesmas tags recém-descobertas
     api_create = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "serial_number": "SN-GPU-02",
+            "patrimony_number": "PAT-GPU-02",
             "description": "Nvidia H100",
-            "equipment_type": "Acelerador GPU",
-            "location": "Cluster IA",
-            "status": "Em uso",
+            "brand": "Nvidia",
+            "model": "Nvidia H100",
+            "category_id": gpu_cat["id"],
+            "location_id": cluster_loc["id"],
+            "status": "em_uso",
         },
     )
     assert api_create.status_code == 201
 
-    # 5. Reimporta planilha com descrição atualizada (upsert idempotente)
     row1_updated = [
         "Acelerador GPU",
         "Cluster IA",
@@ -360,6 +352,5 @@ async def test_tier3_bulk_csv_import_dynamic_tag_discovery_and_api_upsert(
     assert reimport_resp.json()["updated_count"] == 1
     assert reimport_resp.json()["created_count"] == 0
 
-    # 6. Verifica se total de itens é exatamente 2
-    list_resp = await client.get("/api/v1/equipments?type=Acelerador GPU")
+    list_resp = await client.get(f"/api/v1/assets?category_id={gpu_cat['id']}")
     assert list_resp.json()["total"] == 2

@@ -90,6 +90,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/AssetMaintenanceResponse'
 
+  /api/v1/assets/{id}/maintenances/{maintenance_id}:
+    put:
+      summary: Atualizar registro de manutenção de um ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: maintenance_id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetMaintenanceUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetMaintenanceResponse'
+    delete:
+      summary: Excluir registro de manutenção de um ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: maintenance_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Manutenção removida com sucesso
+
 components:
   schemas:
     AssetMovementCreate:
@@ -120,6 +159,15 @@ components:
     AssetMaintenanceCreate:
       type: object
       required: [maintenance_type, description, maintenance_date]
+      properties:
+        maintenance_type: { type: string, enum: [preventiva, corretiva] }
+        service_provider: { type: string, nullable: true }
+        description: { type: string }
+        cost: { type: number, format: float, nullable: true }
+        maintenance_date: { type: string, format: date-time }
+
+    AssetMaintenanceUpdate:
+      type: object
       properties:
         maintenance_type: { type: string, enum: [preventiva, corretiva] }
         service_provider: { type: string, nullable: true }

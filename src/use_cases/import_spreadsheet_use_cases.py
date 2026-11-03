@@ -38,8 +38,8 @@ class PreviewSpreadsheetUseCase:
                     serial_number=r.serial_number,
                     brand=r.brand,
                     model=r.model,
-                    purchase_cost=None,
-                    purchase_date=None,
+                    purchase_cost=r.purchase_cost,
+                    purchase_date=r.purchase_date.strftime("%Y-%m-%d") if r.purchase_date else None,
                     notes=r.notes,
                 )
             )
@@ -157,6 +157,28 @@ class ExecuteSpreadsheetImportUseCase:
                     specs["mac_address"] = row.mac_address
                 if row.notes:
                     specs["notes"] = row.notes
+                if row.specs_raw:
+                    specs["details"] = row.specs_raw
+
+                parsed_cost: Decimal | None = None
+                if row.purchase_cost:
+                    cleaned_cost = (
+                        row.purchase_cost.replace("R$", "")
+                        .replace(" ", "")
+                        .strip()
+                    )
+                    if "," in cleaned_cost and "." in cleaned_cost:
+                        cleaned_cost = cleaned_cost.replace(".", "").replace(",", ".")
+                    elif "," in cleaned_cost:
+                        cleaned_cost = cleaned_cost.replace(",", ".")
+                    try:
+                        val_dec = Decimal(cleaned_cost)
+                        if val_dec >= Decimal("0.00"):
+                            parsed_cost = val_dec
+                    except Exception:
+                        parsed_cost = None
+
+                parsed_date = row.purchase_date.date() if row.purchase_date else None
 
                 patrimony_num = (
                     row.patrimony_number.strip()
@@ -164,6 +186,11 @@ class ExecuteSpreadsheetImportUseCase:
                     else f"IMP-{row.row_number:05d}"
                 )
                 serial_num = row.serial_number.strip() if row.serial_number else None
+
+                if cat.requires_serial_number and not serial_num:
+                    raise ValueError(
+                        f"Linha {row.row_number}: A categoria '{cat.name}' exige o preenchimento obrigatório do número de série."
+                    )
 
                 asset = self.asset_repo.get_by_patrimony_number(patrimony_num)
                 if asset is None and serial_num:
@@ -179,6 +206,10 @@ class ExecuteSpreadsheetImportUseCase:
                         asset.brand = row.brand
                     if row.model:
                         asset.model = row.model
+                    if parsed_cost is not None:
+                        asset.purchase_cost = parsed_cost
+                    if parsed_date is not None:
+                        asset.purchase_date = parsed_date
                     asset.specs = specs
                     updated_count += 1
                 else:
@@ -190,6 +221,8 @@ class ExecuteSpreadsheetImportUseCase:
                         location_id=loc.id,
                         brand=row.brand or "Genérico",
                         model=row.model,
+                        purchase_cost=parsed_cost,
+                        purchase_date=parsed_date,
                         status=valid_status,
                         specs=specs,
                     )

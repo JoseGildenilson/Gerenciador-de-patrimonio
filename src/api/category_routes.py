@@ -65,3 +65,19 @@ def update_category(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
+    id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_tecnico_or_admin),
+):
+    """Exclui uma categoria sem ativos vinculados."""
+    use_case = CategoryUseCases(db)
+    try:
+        use_case.delete_category(id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))

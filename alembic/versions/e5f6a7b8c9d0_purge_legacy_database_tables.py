@@ -40,6 +40,10 @@ def upgrade() -> None:
     if "hashed_password" in user_columns:
         op.drop_column("users", "hashed_password")
 
+    # 3. Drop obsolete PL/pgSQL trigger helper function on PostgreSQL
+    if conn.dialect.name == "postgresql":
+        op.execute("DROP FUNCTION IF EXISTS set_updated_at() CASCADE;")
+
 
 def downgrade() -> None:
     # Recreate obsolete hashed_password column

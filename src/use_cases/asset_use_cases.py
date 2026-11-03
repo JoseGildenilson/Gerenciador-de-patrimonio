@@ -1,4 +1,4 @@
-"""Casos de uso para gestão de ativos patrimoniais e renumeração."""
+"""Casos de uso para gestão de ativos patrimoniais, exportação, sugestões e renumeração."""
 
 from datetime import datetime, timezone
 import math
@@ -11,6 +11,8 @@ from src.domain.schemas import (
     AssetResponse,
     AssetDetailResponse,
     AssetListResponse,
+    AssetMovementResponse,
+    AssetMaintenanceResponse,
     PatrimonyHistoryResponse,
     PatrimonyRenumberRequest,
 )
@@ -21,6 +23,17 @@ from src.infrastructure.repositories import (
     PatrimonyHistoryRepository,
     UserRepository,
 )
+from src.infrastructure.spreadsheet_exporter import generate_assets_spreadsheet
+
+
+def _to_asset_response(asset: Asset) -> AssetResponse:
+    """Converte entidade Asset em AssetResponse preenchendo last_maintenance_at."""
+    resp = AssetResponse.model_validate(asset)
+    if hasattr(asset, "computed_last_maintenance_at"):
+        resp.last_maintenance_at = asset.computed_last_maintenance_at
+    elif asset.maintenances:
+        resp.last_maintenance_at = max(m.maintenance_date for m in asset.maintenances)
+    return resp
 
 
 class AssetUseCases:
@@ -56,15 +69,35 @@ class AssetUseCases:
         )
         pages = math.ceil(total / safe_limit) if total > 0 else 1
         return AssetListResponse(
-            items=[AssetResponse.model_validate(a) for a in items],
+            items=[_to_asset_response(a) for a in items],
             total=total,
             page=safe_page,
             limit=safe_limit,
             pages=pages,
         )
 
+    def export_assets(
+        self,
+        category_id: int | None = None,
+        location_id: int | None = None,
+        status: str | None = None,
+        search: str | None = None,
+    ) -> bytes:
+        """Exporta ativos filtrados em formato de planilha Excel (.xlsx)."""
+        assets = self.asset_repo.list_for_export(
+            category_id=category_id,
+            location_id=location_id,
+            status=status,
+            search=search,
+        )
+        return generate_assets_spreadsheet(assets)
+
+    def get_asset_suggestions(self, field: str, query: str | None = None) -> list[str]:
+        """Retorna sugestões de valores distintos para autocomplete de filtros."""
+        return self.asset_repo.get_suggestions(field=field, query=query)
+
     def get_asset(self, asset_id: int) -> AssetDetailResponse:
-        """Obtém detalhes do ativo com histórico de renumeração."""
+        """Obtém detalhes do ativo com histórico de renumeração, movimentações e manutenções."""
         asset = self.asset_repo.get_by_id(asset_id, eager_history=True)
         if not asset:
             raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
@@ -73,8 +106,20 @@ class AssetUseCases:
             PatrimonyHistoryResponse.model_validate(h)
             for h in sorted(asset.patrimony_histories, key=lambda x: x.changed_at, reverse=True)
         ]
+        movements = [
+            AssetMovementResponse.model_validate(m)
+            for m in sorted(asset.movements, key=lambda x: x.movement_date, reverse=True)
+        ]
+        maintenances = [
+            AssetMaintenanceResponse.model_validate(m)
+            for m in sorted(asset.maintenances, key=lambda x: x.maintenance_date, reverse=True)
+        ]
         resp = AssetDetailResponse.model_validate(asset)
         resp.patrimony_history = histories
+        resp.movements = movements
+        resp.maintenances = maintenances
+        if maintenances:
+            resp.last_maintenance_at = maintenances[0].maintenance_date
         return resp
 
     def create_asset(self, data: AssetCreate) -> AssetResponse:
@@ -103,6 +148,10 @@ class AssetUseCases:
                 raise NotFoundError(
                     f"Usuário custodiante com ID {data.assigned_user_id} não encontrado."
                 )
+            if not user.is_active:
+                raise BusinessRuleError(
+                    "Usuário custodiante está inativo e não pode receber atribuição de ativos."
+                )
 
         # 5. Validar unicidade de patrimony_number
         existing_pat = self.asset_repo.get_by_patrimony_number(data.patrimony_number)
@@ -115,6 +164,8 @@ class AssetUseCases:
             if existing_serial:
                 raise ConflictError(f"Número de série '{clean_serial}' já cadastrado.")
 
+        status_val = data.status.value if hasattr(data.status, "value") else str(data.status)
+
         asset = Asset(
             patrimony_number=data.patrimony_number.strip(),
             serial_number=clean_serial,
@@ -126,14 +177,14 @@ class AssetUseCases:
             model=data.model.strip() if data.model else None,
             purchase_cost=data.purchase_cost,
             purchase_date=data.purchase_date,
-            status=data.status,
+            status=status_val,
             specs=data.specs,
         )
         self.asset_repo.create(asset)
         try:
             self.db.commit()
             self.db.refresh(asset)
-            return AssetResponse.model_validate(asset)
+            return _to_asset_response(asset)
         except Exception:
             self.db.rollback()
             raise
@@ -144,7 +195,9 @@ class AssetUseCases:
         if not asset:
             raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
 
-        if data.category_id is not None:
+        fields_set = data.model_fields_set
+
+        if "category_id" in fields_set and data.category_id is not None:
             cat = self.cat_repo.get_by_id(data.category_id)
             if not cat:
                 raise NotFoundError(f"Categoria com ID {data.category_id} não encontrada.")
@@ -152,50 +205,62 @@ class AssetUseCases:
         else:
             cat = self.cat_repo.get_by_id(asset.category_id)
 
-        if data.location_id is not None:
+        if "location_id" in fields_set and data.location_id is not None:
             loc = self.loc_repo.get_by_id(data.location_id)
             if not loc:
                 raise NotFoundError(f"Localização com ID {data.location_id} não encontrada.")
             asset.location_id = data.location_id
 
-        if data.assigned_user_id is not None:
-            user = self.user_repo.get_by_id(data.assigned_user_id)
-            if not user:
-                raise NotFoundError(f"Usuário com ID {data.assigned_user_id} não encontrado.")
-            asset.assigned_user_id = data.assigned_user_id
+        if "assigned_user_id" in fields_set:
+            if data.assigned_user_id is None:
+                asset.assigned_user_id = None
+            else:
+                user = self.user_repo.get_by_id(data.assigned_user_id)
+                if not user:
+                    raise NotFoundError(f"Usuário com ID {data.assigned_user_id} não encontrado.")
+                if not user.is_active:
+                    raise BusinessRuleError(
+                        "Usuário custodiante está inativo e não pode receber atribuição de ativos."
+                    )
+                asset.assigned_user_id = data.assigned_user_id
 
-        if data.serial_number is not None:
+        if "serial_number" in fields_set:
             clean_serial = data.serial_number.strip() if data.serial_number else None
             if clean_serial:
                 existing_s = self.asset_repo.get_by_serial_number(clean_serial)
                 if existing_s and existing_s.id != asset_id:
                     raise ConflictError(f"Número de série '{clean_serial}' já cadastrado.")
-            asset.serial_number = clean_serial
+            effective_serial = clean_serial
+        else:
+            effective_serial = asset.serial_number
 
-        if cat.requires_serial_number and not asset.serial_number:
+        if cat.requires_serial_number and not effective_serial:
             raise BusinessRuleError(
                 f"A categoria '{cat.name}' exige o preenchimento obrigatório do número de série."
             )
 
-        if data.description is not None:
+        if "serial_number" in fields_set:
+            asset.serial_number = effective_serial
+
+        if "description" in fields_set and data.description is not None:
             asset.description = data.description.strip()
-        if data.brand is not None:
+        if "brand" in fields_set and data.brand is not None:
             asset.brand = data.brand.strip()
-        if data.model is not None:
+        if "model" in fields_set:
             asset.model = data.model.strip() if data.model else None
-        if data.purchase_cost is not None:
+        if "purchase_cost" in fields_set:
             asset.purchase_cost = data.purchase_cost
-        if data.purchase_date is not None:
+        if "purchase_date" in fields_set:
             asset.purchase_date = data.purchase_date
-        if data.status is not None:
-            asset.status = data.status
-        if data.specs is not None:
+        if "status" in fields_set and data.status is not None:
+            asset.status = data.status.value if hasattr(data.status, "value") else str(data.status)
+        if "specs" in fields_set and data.specs is not None:
             asset.specs = data.specs
 
         try:
             self.db.commit()
             self.db.refresh(asset)
-            return AssetResponse.model_validate(asset)
+            return _to_asset_response(asset)
         except Exception:
             self.db.rollback()
             raise

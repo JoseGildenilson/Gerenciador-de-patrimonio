@@ -59,7 +59,7 @@ class CategoryUseCases:
                 raise ConflictError(f"Categoria com nome '{data.name}' já cadastrada.")
             category.name = data.name.strip()
 
-        if data.useful_life_months is not None:
+        if "useful_life_months" in data.model_fields_set:
             category.useful_life_months = data.useful_life_months
         if data.residual_value_rate is not None:
             category.residual_value_rate = data.residual_value_rate
@@ -70,6 +70,24 @@ class CategoryUseCases:
             self.db.commit()
             self.db.refresh(category)
             return CategoryResponse.model_validate(category)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def delete_category(self, category_id: int) -> None:
+        """Exclui uma categoria se não houver ativos vinculados (ON DELETE RESTRICT)."""
+        category = self.repo.get_by_id(category_id)
+        if not category:
+            raise NotFoundError(f"Categoria com ID {category_id} não encontrada.")
+
+        if self.repo.has_assets(category_id):
+            raise ConflictError(
+                f"Não é possível excluir a categoria '{category.name}' pois existem ativos vinculados."
+            )
+
+        self.repo.delete(category)
+        try:
+            self.db.commit()
         except Exception:
             self.db.rollback()
             raise

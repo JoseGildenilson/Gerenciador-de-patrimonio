@@ -71,6 +71,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LocationResponse'
+    delete:
+      summary: Excluir localização sem ativos ou movimentações vinculadas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Localização excluída com sucesso
+        '404':
+          description: Localização não encontrada
+        '409':
+          description: Localização possui ativos ou movimentações vinculadas (violação ON DELETE RESTRICT)
 
 components:
   schemas:

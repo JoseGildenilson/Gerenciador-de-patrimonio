@@ -140,6 +140,13 @@ Disponibilizamos **duas formas independentes** para criar a estrutura e carregar
 
 ### Método 1: Comandos Automatizados via CLI (Recomendado)
 
+> [!IMPORTANT]
+> **Pré-requisito:** O banco PostgreSQL precisa estar em execução antes de rodar os comandos. Se não possuir o PostgreSQL instalado localmente, inicie o container com:
+> ```bash
+> docker compose up -d postgres
+> ```
+> *(Ou configure `DATABASE_URL=sqlite:///./patrimonio.db` no `.env` para testes locais rápidos)*
+
 Utilizando o gerenciador de pacotes [`uv`](https://github.com/astral-sh/uv), execute na raiz do projeto:
 
 ```bash
@@ -236,16 +243,19 @@ cp .env.example .env
 
 #### 2. Configurar e Iniciar o Backend (FastAPI)
 ```bash
-# 1. Instala dependências do Python no ambiente virtual isolado com uv
+# 1. Inicie o PostgreSQL via Docker (caso use Postgres)
+docker compose up -d postgres
+
+# 2. Instala dependências do Python no ambiente virtual isolado com uv
 uv sync --all-extras
 
-# 2. Cria as tabelas e tipos no banco de dados
+# 3. Cria as tabelas e tipos no banco de dados
 uv run db-create
 
-# 3. Popula o banco com os dados de exemplo
+# 4. Popula o banco com os dados de exemplo
 uv run db-seed
 
-# 4. Inicia o servidor backend com recarregamento automático
+# 5. Inicia o servidor backend com recarregamento automático
 uv run uvicorn src.main:app --reload --port 8000
 ```
 O Backend estará acessível em:
@@ -406,4 +416,4 @@ uv run db-seed
 
 ## 📄 Licença
 
-Projeto desenvolvido para fins corporativos e avaliação na disciplina de Banco de Dados. Distribuído sob a licença MIT.
+Projeto desenvolvido para a disciplina de Banco de Dados. Distribuído sob a licença MIT.

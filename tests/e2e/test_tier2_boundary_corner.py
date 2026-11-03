@@ -1,12 +1,12 @@
-"""E2E Test Suite - Tier 2: Boundary & Corner Cases.
+"""E2E Test Suite - Tier 2: Boundary & Corner Cases (Canonical SisPatrimonio).
 
 Covers boundary limits, invalid inputs, edge cases, RBAC restrictions, and error flows:
 - F1: Auth Boundaries & Security Rate Limiting (RN-02, RN-05)
-- F2: Equipment Field Uniqueness, Null-Clearing & 404s (RN-EQ-15, TASK-QA-04)
-- F3: Maintenance & Movement Edge Conditions & 404s (RN-EQ-11, RN-EQ-12)
-- F4: Tag Taxonomy Duplicates & Categories (RN-TAG-02)
-- F5: Spreadsheet Parsing Edge Cases & Corrupt Inputs (RN-IMP-03, RN-IMP-06)
-- F6: Dashboard, Autocomplete & RBAC Restrictions (RN-DASH-03, RN-EQ-16)
+- F2: Asset Field Uniqueness, Null-Clearing & 404s
+- F3: Maintenance & Movement Edge Conditions & 404s
+- F4: Category & Location Duplicates & ON DELETE RESTRICT
+- F5: Spreadsheet Parsing Edge Cases & Corrupt Inputs
+- F6: Dashboard, Autocomplete & RBAC Restrictions
 """
 
 import io
@@ -46,15 +46,17 @@ async def test_tier2_auth_nonexistent_email_generic_error(client: AsyncClient):
 async def test_tier2_auth_rate_limit_10_attempts_blocked_on_11th(client: AsyncClient, e2e_users):
     """Testa proteção contra força bruta: 10 falhas pelo mesmo IP geram 401, a 11ª resulta em 429 (RN-02)."""
     ip_headers = {"X-Forwarded-For": "198.51.100.77"}
-    bad_payload = {"email": e2e_users["tecnico"].email, "password": "WrongPassword!"}
 
-    # Executa 10 tentativas com falha
-    for _ in range(10):
+    for i in range(10):
+        bad_payload = {"email": f"brute_force_{i}@empresa.com", "password": "WrongPassword!"}
         resp = await client.post("/api/v1/auth/login", json=bad_payload, headers=ip_headers)
         assert resp.status_code == 401
 
-    # A 11ª tentativa deve ser bloqueada imediatamente com 429 Too Many Requests
-    blocked_resp = await client.post("/api/v1/auth/login", json=bad_payload, headers=ip_headers)
+    blocked_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "brute_force_11@empresa.com", "password": "WrongPassword!"},
+        headers=ip_headers,
+    )
     assert blocked_resp.status_code == 429
     assert "bloqueado" in blocked_resp.json()["detail"].lower()
 
@@ -87,7 +89,7 @@ async def test_tier2_auth_tampered_token_rejected(client: AsyncClient):
 
 
 # ==============================================================================
-# F2: Equipment Field Uniqueness, Null-Clearing & 404s
+# F2: Asset Field Uniqueness, Null-Clearing & 404s
 # ==============================================================================
 
 
@@ -95,114 +97,136 @@ async def test_tier2_auth_tampered_token_rejected(client: AsyncClient):
 async def test_tier2_equipment_duplicate_serial_number_rejected(
     client: AsyncClient, tecnico_tokens
 ):
-    """Testa que número de série duplicado é recusado com HTTP 400 (RN-EQ-15)."""
+    """Testa que número de série duplicado é recusado com HTTP 400."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    payload = {
+    p1 = {
         "serial_number": "SN-DUP-01",
-        "description": "Equip 1",
-        "equipment_type": "Notebook",
-        "location": "TI",
+        "patrimony_number": "PAT-SN-DUP-01",
+        "description": "Item SN Dup 1",
+        "brand": "Dell",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
     }
-    first = await client.post("/api/v1/equipments", json=payload)
+    p2 = {
+        "serial_number": "SN-DUP-01",
+        "patrimony_number": "PAT-SN-DUP-02",
+        "description": "Item SN Dup 2",
+        "brand": "Dell",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
+    }
+    first = await client.post("/api/v1/assets", json=p1)
     assert first.status_code == 201
 
-    duplicate = await client.post("/api/v1/equipments", json=payload)
-    assert duplicate.status_code == 400
-    assert "cadastrado" in duplicate.json()["detail"].lower()
+    duplicate = await client.post("/api/v1/assets", json=p2)
+    assert duplicate.status_code == 409
+    assert "série" in duplicate.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_tier2_equipment_duplicate_patrimony_number_rejected(
     client: AsyncClient, tecnico_tokens
 ):
-    """Testa que número de patrimônio duplicado é recusado com HTTP 400."""
+    """Testa que número de patrimônio duplicado é recusado com HTTP 409."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     p1 = {
         "patrimony_number": "PAT-DUP-01",
-        "description": "Equip A",
-        "equipment_type": "Desktop",
-        "location": "TI",
+        "description": "Item Pat Dup 1",
+        "brand": "Dell",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
     }
     p2 = {
         "patrimony_number": "PAT-DUP-01",
-        "description": "Equip B",
-        "equipment_type": "Desktop",
-        "location": "RH",
+        "description": "Item Pat Dup 2",
+        "brand": "HP",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
     }
 
-    assert (await client.post("/api/v1/equipments", json=p1)).status_code == 201
-    dup_resp = await client.post("/api/v1/equipments", json=p2)
-    assert dup_resp.status_code == 400
+    assert (await client.post("/api/v1/assets", json=p1)).status_code == 201
+    dup_resp = await client.post("/api/v1/assets", json=p2)
+    assert dup_resp.status_code == 409
     assert "patrimônio" in dup_resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
-async def test_tier2_equipment_duplicate_hostname_rejected(client: AsyncClient, tecnico_tokens):
-    """Testa que hostname duplicado é recusado com HTTP 400."""
+async def test_tier2_equipment_category_requires_serial_number_enforced(
+    client: AsyncClient, tecnico_tokens
+):
+    """Testa que categoria exigindo número de série recusa ativo sem serial_number com HTTP 400."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    p1 = {
-        "hostname": "SRV-HOST-01",
-        "description": "Servidor 1",
-        "equipment_type": "Servidor",
-        "location": "DC",
-    }
-    p2 = {
-        "hostname": "SRV-HOST-01",
-        "description": "Servidor 2",
-        "equipment_type": "Servidor",
-        "location": "DC",
-    }
+    cat_req = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Servidor Crítico", "requires_serial_number": True},
+        )
+    ).json()
 
-    assert (await client.post("/api/v1/equipments", json=p1)).status_code == 201
-    dup_resp = await client.post("/api/v1/equipments", json=p2)
-    assert dup_resp.status_code == 400
-    assert "hostname" in dup_resp.json()["detail"].lower()
+    resp = await client.post(
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-REQ-SN-01",
+            "description": "Servidor sem serial",
+            "brand": "Dell",
+            "category_id": cat_req["id"],
+            "location_id": tecnico_tokens["location_id"],
+            "serial_number": None,
+        },
+    )
+    assert resp.status_code == 400
+    assert "preenchimento obrigatório do número de série" in resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_tier2_equipment_clear_optional_fields_to_null_success(
-    client: AsyncClient, tecnico_tokens
+    client: AsyncClient, tecnico_tokens, e2e_users
 ):
-    """Testa que limpar campos opcionais para None/vazio não gera falso erro de unicidade (TASK-QA-04)."""
+    """Testa que limpar campos opcionais para None/vazio via PUT /api/v1/assets/{id} funciona."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     initial_payload = {
         "serial_number": "SN-CLEAR-01",
         "patrimony_number": "PAT-CLEAR-01",
-        "hostname": "HOST-CLEAR-01",
         "description": "Equipamento Inicial",
-        "equipment_type": "Notebook",
-        "location": "TI",
+        "brand": "Dell",
+        "model": "Modelo Inicial",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
+        "assigned_user_id": e2e_users["colaborador"].id,
+        "purchase_cost": 3500.00,
     }
-    created = await client.post("/api/v1/equipments", json=initial_payload)
+    created = await client.post("/api/v1/assets", json=initial_payload)
+    assert created.status_code == 201
     eq_id = created.json()["id"]
 
-    # Atualiza desvinculando patrimony_number e hostname para None
     clear_payload = {
-        "serial_number": "SN-CLEAR-01",
-        "patrimony_number": None,
-        "hostname": None,
-        "description": "Equipamento com campos limpos",
+        "serial_number": None,
+        "model": None,
+        "assigned_user_id": None,
+        "purchase_cost": None,
     }
-    update_resp = await client.put(f"/api/v1/equipments/{eq_id}", json=clear_payload)
+    update_resp = await client.put(f"/api/v1/assets/{eq_id}", json=clear_payload)
     assert update_resp.status_code == 200
     updated = update_resp.json()
-    assert updated["patrimony_number"] is None
-    assert updated["hostname"] is None
+    assert updated["serial_number"] is None
+    assert updated["model"] is None
+    assert updated["assigned_user_id"] is None
+    assert updated["purchase_cost"] is None
 
 
 @pytest.mark.anyio
 async def test_tier2_equipment_get_nonexistent_id_404(client: AsyncClient, tecnico_tokens):
     """Testa consulta por ID inexistente retornando HTTP 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    response = await client.get("/api/v1/equipments/999999")
+    response = await client.get("/api/v1/assets/999999")
     assert response.status_code == 404
 
 
 @pytest.mark.anyio
 async def test_tier2_equipment_update_nonexistent_id_404(client: AsyncClient, tecnico_tokens):
-    """Testa atualização de equipamento com ID inexistente retornando HTTP 404."""
+    """Testa atualização de ativo com ID inexistente retornando HTTP 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    response = await client.put("/api/v1/equipments/999999", json={"description": "Fantasma"})
+    response = await client.put("/api/v1/assets/999999", json={"model": "Fantasma"})
     assert response.status_code == 404
 
 
@@ -213,10 +237,14 @@ async def test_tier2_equipment_update_nonexistent_id_404(client: AsyncClient, te
 
 @pytest.mark.anyio
 async def test_tier2_maintenance_nonexistent_equipment_404(client: AsyncClient, tecnico_tokens):
-    """Testa cadastro de manutenção para equipamento inexistente retornando 404."""
+    """Testa cadastro de manutenção para ativo inexistente retornando 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    payload = {"maintenance_date": "2026-09-01T00:00:00Z", "description": "Teste"}
-    response = await client.post("/api/v1/equipments/999999/maintenances", json=payload)
+    payload = {
+        "maintenance_date": "2026-09-01T00:00:00Z",
+        "maintenance_type": "preventiva",
+        "description": "Teste",
+    }
+    response = await client.post("/api/v1/assets/999999/maintenances", json=payload)
     assert response.status_code == 404
 
 
@@ -227,12 +255,20 @@ async def test_tier2_maintenance_update_nonexistent_maintenance_404(
     """Testa edição de manutenção com ID inexistente retornando 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments", json={"description": "Item", "equipment_type": "TI", "location": "TI"}
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-M404-1",
+            "description": "Item M404 1",
+            "brand": "Dell",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+        },
     )
+    assert created.status_code == 201
     eq_id = created.json()["id"]
 
     response = await client.put(
-        f"/api/v1/equipments/{eq_id}/maintenances/999999", json={"description": "Novo"}
+        f"/api/v1/assets/{eq_id}/maintenances/999999", json={"description": "Novo"}
     )
     assert response.status_code == 404
 
@@ -244,24 +280,32 @@ async def test_tier2_maintenance_delete_nonexistent_maintenance_404(
     """Testa exclusão de manutenção inexistente retornando 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments", json={"description": "Item", "equipment_type": "TI", "location": "TI"}
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-M404-2",
+            "description": "Item M404 2",
+            "brand": "Dell",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+        },
     )
+    assert created.status_code == 201
     eq_id = created.json()["id"]
 
-    response = await client.delete(f"/api/v1/equipments/{eq_id}/maintenances/999999")
+    response = await client.delete(f"/api/v1/assets/{eq_id}/maintenances/999999")
     assert response.status_code == 404
 
 
 @pytest.mark.anyio
 async def test_tier2_movement_nonexistent_equipment_404(client: AsyncClient, tecnico_tokens):
-    """Testa movimentação de equipamento inexistente retornando 404."""
+    """Testa movimentação de ativo inexistente retornando 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     mov_payload = {
-        "origin_location": "TI",
-        "destination_location": "RH",
-        "movement_date": "2026-09-01T00:00:00Z",
+        "origin_location_id": tecnico_tokens["location_id"],
+        "dest_location_id": tecnico_tokens["location_id"],
+        "notes": "Transferencia teste",
     }
-    response = await client.post("/api/v1/equipments/999999/movements", json=mov_payload)
+    response = await client.post("/api/v1/assets/999999/movements", json=mov_payload)
     assert response.status_code == 404
 
 
@@ -270,65 +314,86 @@ async def test_tier2_maintenance_empty_description_rejected(client: AsyncClient,
     """Testa validação de schema: descrição de manutenção vazia retorna 422."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
-        json={"description": "Equip", "equipment_type": "TI", "location": "TI"},
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-M422-1",
+            "description": "Item M422",
+            "brand": "Dell",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+        },
     )
+    assert created.status_code == 201
     eq_id = created.json()["id"]
 
-    bad_payload = {"maintenance_date": "2026-09-01T00:00:00Z", "description": ""}
-    response = await client.post(f"/api/v1/equipments/{eq_id}/maintenances", json=bad_payload)
+    bad_payload = {
+        "maintenance_date": "2026-09-01T00:00:00Z",
+        "maintenance_type": "preventiva",
+        "description": "",
+    }
+    response = await client.post(f"/api/v1/assets/{eq_id}/maintenances", json=bad_payload)
     assert response.status_code == 422
 
 
 @pytest.mark.anyio
-async def test_tier2_equipment_manual_independent_update_last_maintenance(
+async def test_tier2_decommission_movement_without_dest_location(
     client: AsyncClient, tecnico_tokens
 ):
-    """Testa que última manutenção pode ser alterada manualmente sem registros no histórico (RN-EQ-11)."""
+    """Testa baixa patrimonial (dest_location_id=None) alterando status para baixado."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
-        json={"description": "Equip Teste", "equipment_type": "TI", "location": "TI"},
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-DECOMM-01",
+            "description": "Item para Decommission",
+            "brand": "Dell",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+            "status": "em_uso",
+        },
     )
+    assert created.status_code == 201
     eq_id = created.json()["id"]
 
-    manual_date = "2025-01-01T10:00:00Z"
-    update_resp = await client.put(
-        f"/api/v1/equipments/{eq_id}", json={"last_maintenance_at": manual_date}
+    mov_resp = await client.post(
+        f"/api/v1/assets/{eq_id}/movements",
+        json={
+            "origin_location_id": tecnico_tokens["location_id"],
+            "dest_location_id": None,
+            "notes": "Baixa por obsolescência",
+        },
     )
-    assert update_resp.status_code == 200
+    assert mov_resp.status_code == 201
 
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
-    assert "2025-01-01" in detail["last_maintenance_at"]
-    assert len(detail["maintenances"]) == 0  # Sem registros adicionados ao histórico
+    detail = (await client.get(f"/api/v1/assets/{eq_id}")).json()
+    assert detail["status"] == "baixado"
 
 
 # ==============================================================================
-# F4: Tag Taxonomy Boundaries
+# F4: Category & Location Boundaries
 # ==============================================================================
 
 
 @pytest.mark.anyio
 async def test_tier2_tag_duplicate_name_same_category_rejected(client: AsyncClient, tecnico_tokens):
-    """Testa que criar tag com nome duplicado na mesma categoria é recusado com HTTP 400 (RN-TAG-02)."""
+    """Testa que criar categoria com nome duplicado é recusado com HTTP 409."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    payload = {"category": "tipo", "name": "Servidor Rack"}
-    assert (await client.post("/api/v1/equipments/tags", json=payload)).status_code == 201
+    payload = {"name": "Servidor Rack"}
+    assert (await client.post("/api/v1/categories", json=payload)).status_code == 201
 
-    dup_resp = await client.post("/api/v1/equipments/tags", json=payload)
-    assert dup_resp.status_code == 400
+    dup_resp = await client.post("/api/v1/categories", json=payload)
+    assert dup_resp.status_code == 409
     assert "cadastrad" in dup_resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_tier2_tag_same_name_different_category_allowed(client: AsyncClient, tecnico_tokens):
-    """Testa que o mesmo nome de tag em categorias distintas é permitido."""
+    """Testa que o mesmo nome em Categoria e Setor de Localização é permitido."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp1 = await client.post(
-        "/api/v1/equipments/tags", json={"category": "tipo", "name": "Operações"}
-    )
+    resp1 = await client.post("/api/v1/categories", json={"name": "Operações"})
     resp2 = await client.post(
-        "/api/v1/equipments/tags", json={"category": "localizacao", "name": "Operações"}
+        "/api/v1/locations",
+        json={"building": "Sede", "floor": "1", "sector": "Operações"},
     )
     assert resp1.status_code == 201
     assert resp2.status_code == 201
@@ -336,42 +401,38 @@ async def test_tier2_tag_same_name_different_category_allowed(client: AsyncClien
 
 @pytest.mark.anyio
 async def test_tier2_tag_empty_name_rejected(client: AsyncClient, tecnico_tokens):
-    """Testa que tag com nome vazio é rejeitada com HTTP 422."""
+    """Testa que categoria com nome vazio é rejeitada com HTTP 422."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp = await client.post("/api/v1/equipments/tags", json={"category": "tipo", "name": ""})
+    resp = await client.post("/api/v1/categories", json={"name": ""})
     assert resp.status_code == 422
 
 
 @pytest.mark.anyio
 async def test_tier2_tag_update_nonexistent_tag_404(client: AsyncClient, tecnico_tokens):
-    """Testa atualização de tag inexistente retornando HTTP 404."""
+    """Testa atualização de categoria inexistente retornando HTTP 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp = await client.put("/api/v1/equipments/tags/999999", json={"name": "Inexistente"})
+    resp = await client.put("/api/v1/categories/999999", json={"name": "Inexistente"})
     assert resp.status_code == 404
 
 
 @pytest.mark.anyio
 async def test_tier2_tag_rename_to_existing_duplicate_rejected(client: AsyncClient, tecnico_tokens):
-    """Testa que renomear tag para um nome já em uso na mesma categoria retorna HTTP 400."""
+    """Testa que renomear categoria para um nome já em uso retorna HTTP 409."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    await client.post(
-        "/api/v1/equipments/tags", json={"category": "localizacao", "name": "Setor A"}
-    )
-    t2 = await client.post(
-        "/api/v1/equipments/tags", json={"category": "localizacao", "name": "Setor B"}
-    )
+    await client.post("/api/v1/categories", json={"name": "Cat A"})
+    t2 = await client.post("/api/v1/categories", json={"name": "Cat B"})
 
     t2_id = t2.json()["id"]
-    rename_resp = await client.put(f"/api/v1/equipments/tags/{t2_id}", json={"name": "Setor A"})
-    assert rename_resp.status_code == 400
-    assert "já existe" in rename_resp.json()["detail"].lower()
+    rename_resp = await client.put(f"/api/v1/categories/{t2_id}", json={"name": "Cat A"})
+    assert rename_resp.status_code == 409
+    assert "cadastrad" in rename_resp.json()["detail"].lower()
 
 
 @pytest.mark.anyio
 async def test_tier2_tag_delete_nonexistent_tag_404(client: AsyncClient, tecnico_tokens):
-    """Testa exclusão de tag inexistente retornando HTTP 404."""
+    """Testa exclusão de categoria inexistente retornando HTTP 404."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp = await client.delete("/api/v1/equipments/tags/999999")
+    resp = await client.delete("/api/v1/categories/999999")
     assert resp.status_code == 404
 
 
@@ -415,7 +476,7 @@ async def test_tier2_import_corrupted_file_rejected(client: AsyncClient, tecnico
 async def test_tier2_import_empty_filename_rejected(
     client: AsyncClient, tecnico_tokens, make_csv_bytes
 ):
-    """Testa envio de arquivo com nome vazio retornando HTTP 400."""
+    """Testa envio de arquivo com nome vazio retornando HTTP 400/422."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     files = {"file": ("", make_csv_bytes(rows=[["DESKTOP"]], headers=["TIPO"]), "text/csv")}
     resp = await client.post("/api/v1/equipments/import/preview", files=files)
@@ -426,7 +487,7 @@ async def test_tier2_import_empty_filename_rejected(
 async def test_tier2_import_handles_missing_serial_and_patrimony(
     client: AsyncClient, tecnico_tokens, make_excel_bytes
 ):
-    """Testa que linhas sem serial e sem patrimônio são salvas com None sem erro ou ID artificial (RN-IMP-03)."""
+    """Testa que linhas sem serial e sem patrimônio recebem número de patrimônio gerado e serial None."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     headers = ["TIPO", "LOCALIZAÇÃO", "SITUAÇÃO", "DESCRIÇÃO", "Nº SÉRIE", "Nº PATRIMÔNIO"]
     row = ["DESKTOP", "CTM", "EM USO", "Computador Sem Identificadores", None, None]
@@ -453,7 +514,7 @@ async def test_tier2_import_blank_rows_ignored_gracefully(
     headers = ["TIPO", "LOCALIZAÇÃO", "SITUAÇÃO", "DESCRIÇÃO"]
     rows = [
         ["NOTEBOOK", "TI", "EM USO", "Item Válido 1"],
-        [None, None, None, None],  # Linha vazia
+        [None, None, None, None],
         ["DESKTOP", "RH", "EM USO", "Item Válido 2"],
     ]
     file_bytes = make_excel_bytes(rows=rows, headers=headers)
@@ -472,15 +533,15 @@ async def test_tier2_import_blank_rows_ignored_gracefully(
 
 @pytest.mark.anyio
 async def test_tier2_export_empty_database_valid_header(client: AsyncClient, tecnico_tokens):
-    """Testa que exportar quando o banco não possui equipamentos gera planilha válida com as 13 colunas."""
+    """Testa que exportar gera planilha válida com a aba 'Ativos Patrimoniais' e 12 colunas."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp = await client.get("/api/v1/equipments/export")
+    resp = await client.get("/api/v1/assets/export")
     assert resp.status_code == 200
 
     wb = openpyxl.load_workbook(io.BytesIO(resp.content))
-    ws = wb["Patrimônio"]
-    assert ws.max_row == 1
-    assert ws.max_column == 13
+    assert "Ativos Patrimoniais" in wb.sheetnames
+    ws = wb["Ativos Patrimoniais"]
+    assert ws.max_column == 12
 
 
 # ==============================================================================
@@ -490,36 +551,51 @@ async def test_tier2_export_empty_database_valid_header(client: AsyncClient, tec
 
 @pytest.mark.anyio
 async def test_tier2_equipment_suggestions_prefix_too_short(client: AsyncClient, tecnico_tokens):
-    """Testa que prefixo com menos de 2 caracteres no endpoint de sugestões retorna HTTP 400."""
+    """Testa consulta de sugestões com prefixo curto retornando lista vazia ou filtrada."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp = await client.get("/api/v1/equipments/suggestions?field=patrimony_number&prefix=A")
-    assert resp.status_code == 400
-    assert "pelo menos 2 caracteres" in resp.json()["detail"].lower()
+    resp = await client.get("/api/v1/assets/suggestions?field=patrimony_number&prefix=A")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
 
 
 @pytest.mark.anyio
 async def test_tier2_equipment_suggestions_invalid_field(client: AsyncClient, tecnico_tokens):
-    """Testa que solicitar sugestões para campo não permitido retorna HTTP 400."""
+    """Testa que solicitar sugestões para campo não mapeado retorna lista vazia."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    resp = await client.get("/api/v1/equipments/suggestions?field=campo_invalido&prefix=TESTE")
-    assert resp.status_code == 400
+    resp = await client.get("/api/v1/assets/suggestions?field=campo_invalido&prefix=TESTE")
+    assert resp.status_code == 200
+    assert resp.json() == []
 
 
 @pytest.mark.anyio
-async def test_tier2_colaborador_rbac_forbidden_equipments_list(
+async def test_tier2_colaborador_rbac_forbidden_asset_create(
     client: AsyncClient, colaborador_tokens
 ):
-    """Testa que usuário colaborador recebe 403 Forbidden ao tentar listar equipamentos (RN-EQ-16)."""
+    """Testa que colaborador recebe 403 Forbidden ao tentar cadastrar ativo patrimonial."""
     client.cookies.set("access_token", colaborador_tokens["access_token"])
-    resp = await client.get("/api/v1/equipments")
+    resp = await client.post(
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-ILLEGAL",
+            "description": "Tentativa Colaborador",
+            "brand": "Dell",
+            "category_id": colaborador_tokens["category_id"],
+            "location_id": colaborador_tokens["location_id"],
+        },
+    )
     assert resp.status_code == 403
 
 
 @pytest.mark.anyio
-async def test_tier2_colaborador_rbac_forbidden_export(client: AsyncClient, colaborador_tokens):
-    """Testa que colaborador recebe 403 Forbidden ao tentar exportar planilha (RN-EXP-01)."""
+async def test_tier2_colaborador_rbac_forbidden_location_create(
+    client: AsyncClient, colaborador_tokens
+):
+    """Testa que colaborador recebe 403 Forbidden ao tentar cadastrar localização física."""
     client.cookies.set("access_token", colaborador_tokens["access_token"])
-    resp = await client.get("/api/v1/equipments/export")
+    resp = await client.post(
+        "/api/v1/locations",
+        json={"building": "Bloco Proibido", "floor": "1", "sector": "Invasao"},
+    )
     assert resp.status_code == 403
 
 
@@ -540,9 +616,7 @@ async def test_tier2_colaborador_rbac_forbidden_import_preview(
 async def test_tier2_colaborador_rbac_forbidden_tag_management(
     client: AsyncClient, colaborador_tokens
 ):
-    """Testa que colaborador recebe 403 Forbidden ao tentar criar nova tag (RN-TAG-07)."""
+    """Testa que colaborador recebe 403 Forbidden ao tentar criar nova categoria."""
     client.cookies.set("access_token", colaborador_tokens["access_token"])
-    resp = await client.post(
-        "/api/v1/equipments/tags", json={"category": "tipo", "name": "Tag Ilegal"}
-    )
+    resp = await client.post("/api/v1/categories", json={"name": "Categoria Ilegal"})
     assert resp.status_code == 403

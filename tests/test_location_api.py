@@ -82,3 +82,7 @@ async def test_location_api_crud_and_uniqueness(client: AsyncClient, auth_header
 
     # 8. Atualizar localização inexistente (HTTP 404)
     assert (await client.put("/api/v1/locations/99999", json={"building": "X"})).status_code == 404
+
+    # 9. Excluir localização livre (204) e inexistente (404)
+    assert (await client.delete(f"/api/v1/locations/{loc2_id}")).status_code == 204
+    assert (await client.delete("/api/v1/locations/99999")).status_code == 404

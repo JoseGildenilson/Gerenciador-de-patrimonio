@@ -7,7 +7,13 @@ from src.core.config import settings
 from src.core.database import get_db
 from src.core.security import decode_token, create_access_token, revoke_token, is_token_revoked
 from src.domain.models import User
-from src.domain.schemas import LoginRequest, TokenResponse, UserResponse, MessageResponse
+from src.domain.schemas import (
+    LoginRequest,
+    TokenResponse,
+    UserResponse,
+    UserSummaryResponse,
+    MessageResponse,
+)
 from src.infrastructure.repositories import UserRepository
 from src.use_cases.authenticate_user import (
     AuthenticateUserUseCase,
@@ -17,7 +23,7 @@ from src.use_cases.authenticate_user import (
 
 import ipaddress
 
-router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação"])
+router = APIRouter(tags=["Autenticação"])
 
 TRUSTED_PROXIES = {"127.0.0.1", "::1", "localhost", "testserver"}
 
@@ -70,7 +76,7 @@ def _extract_client_ip(request: Request) -> str:
 
 
 @router.post(
-    "/login",
+    "/api/v1/auth/login",
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
     responses={
@@ -135,7 +141,7 @@ def login(
 
 
 @router.post(
-    "/refresh",
+    "/api/v1/auth/refresh",
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -201,7 +207,7 @@ def refresh(
 
 
 @router.post(
-    "/logout",
+    "/api/v1/auth/logout",
     response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -225,10 +231,25 @@ def logout(request: Request, response: Response):
 
 
 @router.get(
-    "/me",
+    "/api/v1/auth/me",
     response_model=UserResponse,
     status_code=status.HTTP_200_OK,
 )
 def get_me(current_user: User = Depends(get_current_user)):
     """Endpoint de rota protegida que retorna as informações do usuário autenticado."""
     return UserResponse.model_validate(current_user)
+
+
+@router.get(
+    "/api/v1/users",
+    response_model=list[UserSummaryResponse],
+    status_code=status.HTTP_200_OK,
+    tags=["Usuários"],
+)
+def list_active_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista os usuários ativos elegíveis para atribuição de custódia."""
+    users = UserRepository(db).list_active()
+    return [UserSummaryResponse.model_validate(u) for u in users]

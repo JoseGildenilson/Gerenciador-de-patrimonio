@@ -43,7 +43,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 pythonpath = ["."]
-addopts = "-v --cov=src --cov-branch --cov-report=term-missing --ignore=tests/e2e"
+addopts = "-v --cov=src --cov-branch --cov-report=term-missing"
 
 [tool.ruff]
 line-length = 100

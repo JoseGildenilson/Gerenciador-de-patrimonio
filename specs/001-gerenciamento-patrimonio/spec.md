@@ -112,6 +112,23 @@ Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sis
 
 ---
 
+### User Story 7 - Integração Ponta a Ponta do Frontend React e Contratos de API com o Modelo Canônico (Priority: P1)
+
+Como Administrador, Técnico ou Colaborador utilizando a aplicação web React, quero visualizar métricas reais no Dashboard, listar, filtrar, cadastrar, editar, exportar e importar ativos, gerenciar categorias e localizações físicas, registrar movimentações com custodiante e termo de aceite, renumerar plaquetas de patrimônio e lançar manutenções (`preventiva` ou `corretiva`) consumindo exclusivamente os endpoints canônicos (`/api/v1/assets`, `/api/v1/categories`, `/api/v1/locations`, `/api/v1/movements`, `/api/v1/users`, `/api/v1/dashboard/metrics`), sem chamadas legadas a `/api/v1/equipments` ou bloqueio indevido do perfil `administrador`.
+
+**Why this priority**: A interface web precisa refletir integralmente as 7 tabelas e 3 enums do banco de dados para que o sistema opere ponta a ponta sem erros `404 Not Found` ou `403 Forbidden`.
+
+**Independent Test**: Acessar o sistema com `admin@sispatrimonio.edu.br` e `tecnico@sispatrimonio.edu.br`, navegar pelo Dashboard, Inventário de Ativos, Detalhes do Ativo, Modais de Cadastro, Categorias/Localizações, Movimentação, Renumeração, Manutenção e Importação/Exportação de Planilhas, validando que todas as operações persistem no PostgreSQL 16 sem erros HTTP.
+
+**Acceptance Scenarios**:
+
+1. **Given** um usuário autenticado com `role = "administrador"` ou `role = "tecnico"`, **When** acessar o Dashboard, a listagem de ativos (`/equipamentos`), detalhes (`/equipamentos/:id`) ou importação (`/importar`), **Then** o acesso deve ser permitido e os dados das 7 tabelas canônicas devem ser carregados das rotas `/api/v1/assets`, `/api/v1/categories`, `/api/v1/locations` e `/api/v1/dashboard/metrics`.
+2. **Given** a listagem de ativos ou página de detalhes, **When** os ativos forem exibidos, **Then** o payload deve incluir os dados expandidos de categoria (`CategoryResponse`), localização física (`LocationResponse`) e custodiante (`UserSummaryResponse`), permitindo visualização imediata de prédio/andar/setor/sala, depreciação e responsável.
+3. **Given** a necessidade de gerenciar catálogos no frontend, **When** o técnico ou administrador abrir o gerenciador de Categorias e Localizações, **Then** poderá criar, editar e excluir categorias (`/api/v1/categories`) e localizações físicas (`/api/v1/locations`), recebendo `409 Conflict` caso tente excluir um registro que possua ativos vinculados.
+4. **Given** a página de detalhes de um ativo, **When** o técnico ou administrador alterar o número de patrimônio com justificativa, registrar movimentação de local/custodiante (ou baixa patrimonial), aceitar termo de responsabilidade ou lançar/editar/excluir manutenção, **Then** a interface deve invocar os endpoints canônicos correspondentes e atualizar o histórico em tela.
+
+---
+
 ### Edge Cases
 
 - **Exclusão Lógica de Ativos e Usuários**: Ativos e usuários possuem `deleted_at`. Um usuário excluído logicamente não pode receber novas atribuições de custódia de bens (`assigned_user_id`).
@@ -137,6 +154,11 @@ Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sis
 - **FR-010**: O sistema DEVE fornecer comandos CLI (`uv run db-create` e `uv run db-seed`) registrados como entrypoints em `pyproject.toml` para criar tabelas/migrações e popular dados completos do SisPatrimonio.
 - **FR-011**: O sistema DEVE fornecer arquivos SQL nativos (`database/schema.sql` e `database/populate.sql`) contendo DDL e DML prontos para execução em clientes SQL padrão para PostgreSQL 16.
 - **FR-012**: O sistema DEVE disponibilizar um listener de eventos de execução na `engine` do SQLAlchemy (`before_cursor_execute` e `after_cursor_execute`, compatível com PostgreSQL 16 e SQLite em testes) controlado pela variável de ambiente `LOG_SQL_STATEMENTS` (habilitada por padrão em desenvolvimento `True` e desabilitada em produção `False`) para exibir nos logs do backend todas as queries DML/DQL (`SELECT` em listagens/consultas, `INSERT` em cadastros/movimentações/manutenções e `UPDATE` em edições/renumerações/soft-delete) no formato padronizado `[SQL QUERY] (<duração>ms) SQL: <statement> | PARAMS: <params>`, com parâmetros higienizados (mascaramento automático de `password`, `hash`, `token`, `secret`, `key` via `[REDACTED]` em execuções simples ou em lote) e filtragem estrita de consultas de healthcheck (`SELECT 1`) e ruídos de controle transacional (`BEGIN`/`COMMIT`/`ROLLBACK`).
+- **FR-013**: As migrações Alembic (`alembic/versions/`) e os modelos ORM (`src/domain/models.py`) DEVEM refletir com paridade exata o DDL de `database/schema.sql`, incluindo tipos `ENUM` nativos nas colunas (`users.role`, `assets.status`, `asset_maintenances.maintenance_type`), unicidade física `uq_locations_physical_space` com `NULLS NOT DISTINCT`, políticas `ON DELETE` (`RESTRICT`, `SET NULL`, `CASCADE`) nas chaves estrangeiras, `CheckConstraint`s de valores positivos/faixas e índices de performance.
+- **FR-014**: Os schemas de entrada da API (`AssetCreate`, `AssetUpdate`, `AssetMaintenanceCreate`, `AssetMaintenanceUpdate`) DEVEM validar estritamente os enums `AssetStatus` e `MaintenanceTypeEnum` via Pydantic v2 (retornando HTTP 422 em valores inválidos), permitir limpeza explícita de campos anuláveis via `model_fields_set` em `PUT /api/v1/assets/{id}` e validar que usuários custodiantes (`assigned_user_id`, `to_user_id`) estejam ativos (`is_active = true` e `deleted_at IS NULL`).
+- **FR-015**: O backend DEVE disponibilizar os endpoints de suporte operacional: `GET /api/v1/assets/export` (exportação `.xlsx`), `GET /api/v1/assets/suggestions` (autocomplete de filtros), `GET /api/v1/users` (listagem de usuários ativos para custódia), `DELETE /api/v1/categories/{id}` e `DELETE /api/v1/locations/{id}` (bloqueando exclusão com `409 Conflict` se houver ativos ou movimentações vinculadas), além de `PUT /api/v1/assets/{id}/maintenances/{maintenance_id}` e `DELETE /api/v1/assets/{id}/maintenances/{maintenance_id}`.
+- **FR-016**: O controle de acesso RBAC no Backend (incluindo `import_routes.py`) e no Frontend (`App.tsx`, `SideMenu.tsx`, `DashboardPage.tsx`, páginas e modais) DEVE conceder ao papel `administrador` todas as permissões operacionais concedidas ao `tecnico`.
+- **FR-017**: A aplicação Frontend React (`frontend/src/`) DEVE consumir exclusivamente os contratos canônicos (`/api/v1/assets`, `/api/v1/categories`, `/api/v1/locations`, `/api/v1/movements`, `/api/v1/users`, `/api/v1/dashboard/metrics`), eliminando chamadas às rotas descontinuadas `/api/v1/equipments` e `/api/v1/equipments/tags`.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -158,6 +180,7 @@ Como Professor avaliador da disciplina de Banco de Dados ou Desenvolvedor do sis
 - **SC-004**: Zero violações das restrições de integridade referencial e unicidade física composta em toda a suíte de testes automatizados.
 - **SC-005**: Comandos `uv run db-create` e `uv run db-seed` executam sem erros, populando com sucesso todas as entidades do modelo e mantendo cobertura de código em 100%.
 - **SC-006**: 100% das operações SQL (`SELECT`, `INSERT`, `UPDATE`/soft-delete) geradas pelas rotas da API (`/api/v1/*`) e comandos são visualizáveis no formato `[SQL QUERY] (<ms>ms) SQL: ...` e verificadas por testes de integração automatizados, com zero vazamento de queries automáticas de healthcheck (`SELECT 1`) ou credenciais em texto claro.
+- **SC-007**: 100% das telas, modais e fluxos do Frontend React (`DashboardPage`, `EquipmentListPage`, `EquipmentDetailPage`, `ImportPage`, `NewEquipmentModal`, `ManageTagsModal`, `MovementModal`, `MaintenanceModal`, `EditMaintenanceModal`) operam ponta a ponta sobre os endpoints das 7 tabelas canônicas, com suíte backend (`pytest --cov=src --cov-branch --cov-fail-under=100`), suíte E2E (`tests/e2e/`) e suíte frontend (`npx tsc --noEmit` e `vitest run`) aprovadas sem erros.
 
 ## Assumptions
 

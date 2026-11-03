@@ -68,14 +68,15 @@ describe('Coverage Completion Suite: 100% Statement and Branch Coverage', () => 
   });
 
   describe('1. equipmentApi.getTags without category argument (line 50)', () => {
-    it('executes real equipmentApi.getTags without category and passes undefined params', async () => {
-      const getSpy = vi.spyOn(equipmentHttpClient, 'get').mockResolvedValueOnce({ data: [] } as any);
+    it('executes real equipmentApi.getTags without category and aggregates categories, locations and statuses', async () => {
+      const getSpy = vi.spyOn(equipmentHttpClient, 'get').mockResolvedValue({ data: [] } as any);
 
       const actualModule = await vi.importActual<typeof import('../api/equipmentApi')>('../api/equipmentApi');
       const tags = await actualModule.equipmentApi.getTags();
 
-      expect(tags).toEqual([]);
-      expect(getSpy).toHaveBeenCalledWith('/tags', { params: undefined });
+      expect(tags.length).toBeGreaterThanOrEqual(4);
+      expect(getSpy).toHaveBeenCalledWith('/categories');
+      expect(getSpy).toHaveBeenCalledWith('/locations');
     });
   });
 

@@ -129,10 +129,54 @@ async def test_asset_maintenance_api_lifecycle(
     assert created_data["maintenance_type"] == "preventiva"
     assert float(created_data["cost"]) == 320.50
 
-    # 3. Listar manutenções do ativo
+    # 3. Listar manutenções do ativo e verificar last_maintenance_at no ativo
     resp_list = await client.get(f"/api/v1/assets/{asset.id}/maintenances")
     assert resp_list.status_code == 200
     assert len(resp_list.json()) == 1
+    maint_id = created_data["id"]
+
+    resp_asset_with_maint = await client.get(f"/api/v1/assets/{asset.id}")
+    assert resp_asset_with_maint.status_code == 200
+    assert resp_asset_with_maint.json()["last_maintenance_at"] is not None
+
+    # 3b. Atualizar manutenção (200 e 404)
+    resp_up_maint = await client.put(
+        f"/api/v1/assets/{asset.id}/maintenances/{maint_id}",
+        json={
+            "maintenance_type": "corretiva",
+            "service_provider": "Zebra Oficial",
+            "description": "Troca do rolo pressor",
+            "cost": 450.00,
+            "maintenance_date": created_data["maintenance_date"],
+        },
+    )
+    assert resp_up_maint.status_code == 200
+    assert resp_up_maint.json()["maintenance_type"] == "corretiva"
+    assert resp_up_maint.json()["service_provider"] == "Zebra Oficial"
+
+    assert (
+        await client.put(
+            f"/api/v1/assets/99999/maintenances/{maint_id}",
+            json={"description": "Inexistente"},
+        )
+    ).status_code == 404
+    assert (
+        await client.put(
+            f"/api/v1/assets/{asset.id}/maintenances/99999",
+            json={"description": "Inexistente"},
+        )
+    ).status_code == 404
+
+    # 3c. Excluir manutenção (404 e 204)
+    assert (
+        await client.delete(f"/api/v1/assets/99999/maintenances/{maint_id}")
+    ).status_code == 404
+    assert (
+        await client.delete(f"/api/v1/assets/{asset.id}/maintenances/99999")
+    ).status_code == 404
+    assert (
+        await client.delete(f"/api/v1/assets/{asset.id}/maintenances/{maint_id}")
+    ).status_code == 204
 
     # 4. Criar manutenção em ativo inexistente (HTTP 404)
     assert (

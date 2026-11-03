@@ -3,7 +3,11 @@
 from sqlalchemy.orm import Session
 from src.core.exceptions import BusinessRuleError, NotFoundError
 from src.domain.models import AssetMaintenance
-from src.domain.schemas import AssetMaintenanceCreate, AssetMaintenanceResponse
+from src.domain.schemas import (
+    AssetMaintenanceCreate,
+    AssetMaintenanceUpdate,
+    AssetMaintenanceResponse,
+)
 from src.infrastructure.repositories import (
     AssetMaintenanceRepository,
     AssetRepository,
@@ -39,10 +43,16 @@ class MaintenanceUseCases:
                 "Ativo com status 'baixado' não pode receber novas manutenções sem restauração prévia."
             )
 
+        m_type = (
+            data.maintenance_type.value
+            if hasattr(data.maintenance_type, "value")
+            else str(data.maintenance_type)
+        )
+
         maintenance = AssetMaintenance(
             asset_id=asset.id,
             registered_by_id=registered_by_id,
-            maintenance_type=data.maintenance_type,
+            maintenance_type=m_type,
             service_provider=data.service_provider.strip() if data.service_provider else None,
             description=data.description.strip(),
             cost=data.cost,
@@ -54,6 +64,61 @@ class MaintenanceUseCases:
             self.db.commit()
             self.db.refresh(maintenance)
             return AssetMaintenanceResponse.model_validate(maintenance)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def update_maintenance(
+        self, asset_id: int, maintenance_id: int, data: AssetMaintenanceUpdate
+    ) -> AssetMaintenanceResponse:
+        """Atualiza um registro existente de manutenção de um ativo."""
+        asset = self.asset_repo.get_by_id(asset_id)
+        if not asset:
+            raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
+
+        maintenance = self.maintenance_repo.get_by_id(maintenance_id)
+        if not maintenance or maintenance.asset_id != asset_id:
+            raise NotFoundError(f"Manutenção com ID {maintenance_id} não encontrada.")
+
+        fields_set = data.model_fields_set
+        if "maintenance_type" in fields_set and data.maintenance_type is not None:
+            maintenance.maintenance_type = (
+                data.maintenance_type.value
+                if hasattr(data.maintenance_type, "value")
+                else str(data.maintenance_type)
+            )
+        if "service_provider" in fields_set:
+            maintenance.service_provider = (
+                data.service_provider.strip() if data.service_provider else None
+            )
+        if "description" in fields_set and data.description is not None:
+            maintenance.description = data.description.strip()
+        if "cost" in fields_set:
+            maintenance.cost = data.cost
+        if "maintenance_date" in fields_set and data.maintenance_date is not None:
+            maintenance.maintenance_date = data.maintenance_date
+
+        try:
+            self.db.commit()
+            self.db.refresh(maintenance)
+            return AssetMaintenanceResponse.model_validate(maintenance)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def delete_maintenance(self, asset_id: int, maintenance_id: int) -> None:
+        """Remove um registro de manutenção de um ativo."""
+        asset = self.asset_repo.get_by_id(asset_id)
+        if not asset:
+            raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
+
+        maintenance = self.maintenance_repo.get_by_id(maintenance_id)
+        if not maintenance or maintenance.asset_id != asset_id:
+            raise NotFoundError(f"Manutenção com ID {maintenance_id} não encontrada.")
+
+        self.maintenance_repo.delete(maintenance)
+        try:
+            self.db.commit()
         except Exception:
             self.db.rollback()
             raise

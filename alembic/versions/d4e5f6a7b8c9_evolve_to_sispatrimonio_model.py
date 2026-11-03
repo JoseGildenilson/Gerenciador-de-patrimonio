@@ -35,8 +35,12 @@ def upgrade() -> None:
     op.alter_column("users", "hashed_password", nullable=True)
     op.add_column("users", sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
 
-    # Update check constraint on users.role to allow administrador
+    # Update check constraint and enum type on users.role to allow administrador
     op.drop_constraint("chk_users_role_valid", "users", type_="check")
+    if bind.dialect.name == "postgresql":
+        op.execute("ALTER TABLE users ALTER COLUMN role DROP DEFAULT")
+        op.execute("ALTER TABLE users ALTER COLUMN role TYPE user_role USING role::user_role")
+        op.execute("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'colaborador'::user_role")
     op.create_check_constraint(
         "chk_users_role_valid",
         "users",
@@ -61,6 +65,7 @@ def upgrade() -> None:
         "locations",
         ["building", "floor", "sector", "room_number"],
         unique=True,
+        postgresql_nulls_not_distinct=True,
     )
 
     # 3. Create categories table
@@ -73,11 +78,37 @@ def upgrade() -> None:
         sa.Column("requires_serial_number", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.CheckConstraint(
+            "useful_life_months IS NULL OR useful_life_months > 0",
+            name="ck_categories_useful_life_positive",
+        ),
+        sa.CheckConstraint(
+            "residual_value_rate >= 0.00 AND residual_value_rate <= 100.00",
+            name="ck_categories_residual_rate_range",
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_categories_name"),
     )
 
     # 4. Create assets table
+    asset_status_type = (
+        postgresql.ENUM(
+            "disponivel",
+            "em_uso",
+            "em_manutencao",
+            "baixado",
+            name="asset_status",
+            create_type=False,
+        )
+        if bind.dialect.name == "postgresql"
+        else sa.Enum(
+            "disponivel",
+            "em_uso",
+            "em_manutencao",
+            "baixado",
+            name="asset_status",
+        )
+    )
     op.create_table(
         "assets",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -91,7 +122,7 @@ def upgrade() -> None:
         sa.Column("model", sa.String(length=100), nullable=True),
         sa.Column("purchase_cost", sa.Numeric(precision=12, scale=2), nullable=True),
         sa.Column("purchase_date", sa.Date(), nullable=True),
-        sa.Column("status", sa.String(length=50), server_default="disponivel", nullable=False),
+        sa.Column("status", asset_status_type, server_default="disponivel", nullable=False),
         sa.Column(
             "specs",
             sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql"),
@@ -101,13 +132,21 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.ForeignKeyConstraint(["category_id"], ["categories.id"]),
-        sa.ForeignKeyConstraint(["location_id"], ["locations.id"]),
-        sa.ForeignKeyConstraint(["assigned_user_id"], ["users.id"]),
+        sa.CheckConstraint(
+            "purchase_cost IS NULL OR purchase_cost >= 0.00",
+            name="ck_assets_purchase_cost_non_negative",
+        ),
+        sa.ForeignKeyConstraint(["category_id"], ["categories.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["location_id"], ["locations.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["assigned_user_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("patrimony_number", name="uq_assets_patrimony_number"),
         sa.UniqueConstraint("serial_number", name="uq_assets_serial_number"),
     )
+    op.create_index("idx_assets_category_id", "assets", ["category_id"])
+    op.create_index("idx_assets_location_id", "assets", ["location_id"])
+    op.create_index("idx_assets_assigned_user_id", "assets", ["assigned_user_id"])
+    op.create_index("idx_assets_status", "assets", ["status"])
 
     # 5. Create patrimony_history table
     op.create_table(
@@ -120,9 +159,10 @@ def upgrade() -> None:
         sa.Column("changed_by_id", sa.Integer(), nullable=False),
         sa.Column("changed_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["changed_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["changed_by_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index("idx_patrimony_history_asset_id", "patrimony_history", ["asset_id"])
 
     # 6. Create asset_movements table
     op.create_table(
@@ -138,50 +178,72 @@ def upgrade() -> None:
         sa.Column("movement_date", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["origin_location_id"], ["locations.id"]),
-        sa.ForeignKeyConstraint(["dest_location_id"], ["locations.id"]),
-        sa.ForeignKeyConstraint(["from_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["to_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["moved_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["origin_location_id"], ["locations.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["dest_location_id"], ["locations.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(["from_user_id"], ["users.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["to_user_id"], ["users.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["moved_by_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index("idx_asset_movements_asset_id", "asset_movements", ["asset_id"])
 
     # 7. Create asset_maintenances table
+    maintenance_type_enum = (
+        postgresql.ENUM("preventiva", "corretiva", name="maintenance_type", create_type=False)
+        if bind.dialect.name == "postgresql"
+        else sa.Enum("preventiva", "corretiva", name="maintenance_type")
+    )
     op.create_table(
         "asset_maintenances",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("asset_id", sa.Integer(), nullable=False),
         sa.Column("registered_by_id", sa.Integer(), nullable=False),
-        sa.Column("maintenance_type", sa.String(length=50), nullable=False),
+        sa.Column("maintenance_type", maintenance_type_enum, nullable=False),
         sa.Column("service_provider", sa.String(length=150), nullable=True),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("cost", sa.Numeric(precision=12, scale=2), nullable=True),
         sa.Column("maintenance_date", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.CheckConstraint(
+            "cost IS NULL OR cost >= 0.00",
+            name="ck_asset_maintenances_cost_non_negative",
+        ),
         sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["registered_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["registered_by_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index("idx_asset_maintenances_asset_id", "asset_maintenances", ["asset_id"])
 
 
 def downgrade() -> None:
+    op.drop_index("idx_asset_maintenances_asset_id", table_name="asset_maintenances")
     op.drop_table("asset_maintenances")
+    op.drop_index("idx_asset_movements_asset_id", table_name="asset_movements")
     op.drop_table("asset_movements")
+    op.drop_index("idx_patrimony_history_asset_id", table_name="patrimony_history")
     op.drop_table("patrimony_history")
+    op.drop_index("idx_assets_status", table_name="assets")
+    op.drop_index("idx_assets_assigned_user_id", table_name="assets")
+    op.drop_index("idx_assets_location_id", table_name="assets")
+    op.drop_index("idx_assets_category_id", table_name="assets")
     op.drop_table("assets")
     op.drop_table("categories")
     op.drop_index("uq_locations_physical_space", table_name="locations")
     op.drop_table("locations")
 
+    bind = op.get_bind()
     op.drop_constraint("chk_users_role_valid", "users", type_="check")
+    if bind.dialect.name == "postgresql":
+        op.execute("ALTER TABLE users ALTER COLUMN role DROP DEFAULT")
+        op.execute("ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(50) USING role::text")
+        op.execute("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'tecnico'")
     op.create_check_constraint("chk_users_role_valid", "users", "role IN ('tecnico', 'colaborador')")
     op.alter_column("users", "hashed_password", nullable=False)
     op.drop_column("users", "updated_at")
     op.drop_column("users", "password_hash")
     op.drop_column("users", "name")
 
-    bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         postgresql.ENUM(name="maintenance_type").drop(bind, checkfirst=True)
         postgresql.ENUM(name="asset_status").drop(bind, checkfirst=True)
