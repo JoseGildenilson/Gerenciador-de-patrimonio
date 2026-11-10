@@ -51,6 +51,7 @@ RUN chmod +x /entrypoint.sh
 COPY src/ /app/src/
 COPY alembic/ /app/alembic/
 COPY alembic.ini /app/alembic.ini
+COPY database/ /app/database/
 
 EXPOSE 8000
 ENTRYPOINT ["/entrypoint.sh"]
@@ -89,6 +90,7 @@ RUN chmod +x /entrypoint.sh
 COPY --chown=appuser:appgroup src/ /app/src/
 COPY --chown=appuser:appgroup alembic/ /app/alembic/
 COPY --chown=appuser:appgroup alembic.ini /app/alembic.ini
+COPY --chown=appuser:appgroup database/ /app/database/
 
 # Alterna para o usuário não-privilegiado
 USER 10001

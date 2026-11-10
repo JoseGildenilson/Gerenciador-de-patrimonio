@@ -203,6 +203,18 @@ export const EquipmentDetailPage: React.FC = () => {
         (s) => s.name.trim().toLowerCase() === editForm.status.trim().toLowerCase()
       );
 
+      if (
+        editForm.patrimony_number.trim() &&
+        equipment.patrimony_number &&
+        editForm.patrimony_number.trim() !== equipment.patrimony_number &&
+        typeof (equipmentApi as any).renumberPatrimony === 'function'
+      ) {
+        await (equipmentApi as any).renumberPatrimony(equipment.id, {
+          new_patrimony_number: editForm.patrimony_number.trim(),
+          reason: 'Renumeração via prontuário técnico',
+        });
+      }
+
       const updated = await equipmentApi.updateEquipment(equipment.id, {
         serial_number: editForm.serial_number.trim() || null,
         patrimony_number: editForm.patrimony_number.trim() || null,
@@ -211,8 +223,10 @@ export const EquipmentDetailPage: React.FC = () => {
         brand: editForm.brand.trim() || null,
         model: editForm.product_number.trim() || null,
         product_number: editForm.product_number.trim() || null,
+        category_id: typeMatch?.id,
         equipment_type: editForm.equipment_type,
         equipment_type_id: typeMatch?.id,
+        location_id: locMatch?.id,
         location: editForm.location,
         sector_id: locMatch?.id,
         status: editForm.status,

@@ -126,4 +126,38 @@ describe('Página DashboardPage', () => {
       expect(screen.getByText('Tela de Login')).toBeInTheDocument();
     });
   });
+
+  it('Renderiza visão de Administrador com KPIs patrimoniais reais do backend', async () => {
+    (authApi.getMe as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1,
+      name: 'Admin',
+      email: 'admin@sispatrimonio.edu.br',
+      role: 'administrador',
+      is_active: true,
+    });
+    (dashboardApi.getMetrics as ReturnType<typeof vi.fn>).mockResolvedValue({
+      assets_total: 15,
+      assets_in_use: 10,
+      assets_available: 3,
+      assets_in_maintenance: 1,
+      assets_decommissioned: 1,
+    });
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <Routes>
+            <Route path="/dashboard" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-metrics-grid')).toBeInTheDocument();
+      expect(screen.getByText('15')).toBeInTheDocument();
+      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByTestId('equipamentos-card')).toBeInTheDocument();
+    });
+  });
 });

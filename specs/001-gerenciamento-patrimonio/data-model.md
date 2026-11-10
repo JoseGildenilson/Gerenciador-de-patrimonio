@@ -176,3 +176,40 @@ Ao atualizar `assets.patrimony_number`:
 2. Registra linha imutável em `patrimony_history` com `asset_id`, `old_patrimony_number`, `new_patrimony_number`, `reason`, `changed_by_id`, `changed_at`.
 3. Atualiza `assets.patrimony_number` e `updated_at`.
 4. Executa `commit` atômico conjunto na mesma transação.
+
+---
+
+## 4. Regras de Integridade Física (`ON DELETE`), `CheckConstraint`s e Índices
+
+### 4.1. Políticas de Exclusão Referencial (`ON DELETE`)
+| Tabela | Coluna FK | Referência | Política `ON DELETE` |
+|---|---|---|---|
+| `assets` | `category_id` | `categories(id)` | `RESTRICT` |
+| `assets` | `location_id` | `locations(id)` | `RESTRICT` |
+| `assets` | `assigned_user_id` | `users(id)` | `SET NULL` |
+| `patrimony_history` | `asset_id` | `assets(id)` | `CASCADE` |
+| `patrimony_history` | `changed_by_id` | `users(id)` | `RESTRICT` |
+| `asset_movements` | `asset_id` | `assets(id)` | `CASCADE` |
+| `asset_movements` | `origin_location_id` | `locations(id)` | `RESTRICT` |
+| `asset_movements` | `dest_location_id` | `locations(id)` | `RESTRICT` |
+| `asset_movements` | `from_user_id` | `users(id)` | `SET NULL` |
+| `asset_movements` | `to_user_id` | `users(id)` | `SET NULL` |
+| `asset_movements` | `moved_by_id` | `users(id)` | `RESTRICT` |
+| `asset_maintenances` | `asset_id` | `assets(id)` | `CASCADE` |
+| `asset_maintenances` | `registered_by_id` | `users(id)` | `RESTRICT` |
+
+### 4.2. Restrições de Domínio (`CHECK`) e Unicidade
+- `uq_locations_physical_space`: `UNIQUE NULLS NOT DISTINCT (building, floor, sector, room_number)` em `locations`.
+- `ck_categories_useful_life_positive`: `useful_life_months > 0` em `categories`.
+- `ck_categories_residual_rate_range`: `residual_value_rate >= 0.00 AND residual_value_rate <= 100.00` em `categories`.
+- `ck_assets_purchase_cost_non_negative`: `purchase_cost >= 0.00` em `assets`.
+- `ck_asset_maintenances_cost_non_negative`: `cost >= 0.00` em `asset_maintenances`.
+
+### 4.3. Índices de Performance
+- `idx_assets_category_id` (`assets.category_id`)
+- `idx_assets_location_id` (`assets.location_id`)
+- `idx_assets_assigned_user_id` (`assets.assigned_user_id`)
+- `idx_assets_status` (`assets.status`)
+- `idx_asset_movements_asset_id` (`asset_movements.asset_id`)
+- `idx_asset_maintenances_asset_id` (`asset_maintenances.asset_id`)
+- `idx_patrimony_history_asset_id` (`patrimony_history.asset_id`)

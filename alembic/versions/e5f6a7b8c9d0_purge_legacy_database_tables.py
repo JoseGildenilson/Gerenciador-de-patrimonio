@@ -4,6 +4,7 @@ Revision ID: e5f6a7b8c9d0
 Revises: d4e5f6a7b8c9
 Create Date: 2026-10-28 12:00:00.000000
 """
+
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
@@ -40,6 +41,10 @@ def upgrade() -> None:
     if "hashed_password" in user_columns:
         op.drop_column("users", "hashed_password")
 
+    # 3. Drop obsolete PL/pgSQL trigger helper function on PostgreSQL
+    if conn.dialect.name == "postgresql":
+        op.execute("DROP FUNCTION IF EXISTS set_updated_at() CASCADE;")
+
 
 def downgrade() -> None:
     # Recreate obsolete hashed_password column
@@ -61,20 +66,38 @@ def downgrade() -> None:
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
             sa.Column("email_attempted", sa.String(length=255), nullable=False),
             sa.Column("ip_address", sa.String(length=45), nullable=False),
-            sa.Column("attempted_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "attempted_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("success", sa.Boolean(), nullable=False, default=False),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index(op.f("ix_login_attempts_ip_address"), "login_attempts", ["ip_address"], unique=False)
-        op.create_index("ix_login_attempts_ip_attempted_at", "login_attempts", ["ip_address", "attempted_at"])
-        op.create_index("ix_login_attempts_email_attempted_at", "login_attempts", ["email_attempted", "attempted_at"])
+        op.create_index(
+            op.f("ix_login_attempts_ip_address"), "login_attempts", ["ip_address"], unique=False
+        )
+        op.create_index(
+            "ix_login_attempts_ip_attempted_at", "login_attempts", ["ip_address", "attempted_at"]
+        )
+        op.create_index(
+            "ix_login_attempts_email_attempted_at",
+            "login_attempts",
+            ["email_attempted", "attempted_at"],
+        )
 
     if "equipment_types" not in existing_tables:
         op.create_table(
             "equipment_types",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
             sa.Column("name", sa.String(length=100), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("name"),
@@ -85,7 +108,12 @@ def downgrade() -> None:
             "sectors",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
             sa.Column("name", sa.String(length=100), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("name"),
@@ -96,7 +124,12 @@ def downgrade() -> None:
             "equipment_statuses",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
             sa.Column("name", sa.String(length=100), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("name"),
@@ -107,7 +140,12 @@ def downgrade() -> None:
             "maintenance_types",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
             sa.Column("name", sa.String(length=100), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("name"),
@@ -124,8 +162,18 @@ def downgrade() -> None:
             sa.Column("sector_id", sa.Integer(), nullable=False),
             sa.Column("status_id", sa.Integer(), nullable=False),
             sa.Column("version_id", sa.Integer(), server_default="1", nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint("id"),
         )
@@ -138,10 +186,25 @@ def downgrade() -> None:
             sa.Column("origin_sector_id", sa.Integer(), nullable=False),
             sa.Column("destination_sector_id", sa.Integer(), nullable=False),
             sa.Column("performed_by_user_id", sa.Integer(), nullable=False),
-            sa.Column("movement_date", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "movement_date",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("notes", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.PrimaryKeyConstraint("id"),
         )
 
@@ -152,11 +215,26 @@ def downgrade() -> None:
             sa.Column("equipment_id", sa.Integer(), nullable=False),
             sa.Column("maintenance_type_id", sa.Integer(), nullable=False),
             sa.Column("performed_by_user_id", sa.Integer(), nullable=True),
-            sa.Column("started_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "started_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("description", sa.Text(), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
+            sa.Column(
+                "updated_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.PrimaryKeyConstraint("id"),
         )

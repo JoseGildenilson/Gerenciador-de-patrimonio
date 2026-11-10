@@ -26,9 +26,17 @@ class Settings(BaseModel):
     )
     RATE_LIMIT_MAX_ATTEMPTS: int = 10
     RATE_LIMIT_WINDOW_MINUTES: int = 15
+    LOG_SQL_STATEMENTS: bool = False
 
     def __init__(self, **data):
         super().__init__(**data)
+        if "LOG_SQL_STATEMENTS" not in data:
+            env_val = os.getenv("LOG_SQL_STATEMENTS")
+            if env_val is not None:
+                self.LOG_SQL_STATEMENTS = env_val.lower() in ("true", "1", "yes")
+            else:
+                self.LOG_SQL_STATEMENTS = self.ENVIRONMENT.lower() != "production"
+
         if self.ENVIRONMENT.lower() == "production":
             if (
                 not self.SECRET_KEY

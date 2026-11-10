@@ -305,6 +305,7 @@ def test_movement_and_maintenance_use_cases_rollbacks(db_session: Session, creat
     assert mov.from_user_id == user.id
 
     # Rollback no create_movement
+    asset.status = "disponivel"
     mock_db = MagicMock(spec=Session)
     mock_db.commit.side_effect = RuntimeError("Mov commit fail")
     mock_mov_uc = AssetMovementUseCases(mock_db)
@@ -317,6 +318,7 @@ def test_movement_and_maintenance_use_cases_rollbacks(db_session: Session, creat
             moved_by_id=user.id,
         )
     mock_db.rollback.assert_called_once()
+    asset.status = "disponivel"
 
     # Rollback no accept_custody_term
     mock_db.reset_mock()
@@ -537,3 +539,202 @@ def test_import_spreadsheet_remaining_branches(db_session: Session, monkeypatch)
     assert asset.status == "disponivel"
     assert asset.brand == "Kappesberg"
     assert asset.model == "Original"
+
+
+@pytest.mark.anyio
+async def test_phase12_new_endpoints_and_use_case_branches(
+    client, db_session: Session, create_test_user, monkeypatch
+):
+    from fastapi import HTTPException
+    from src.api.dependencies import require_tecnico_role
+    from src.core.exceptions import BusinessRuleError
+    from src.core.security import create_access_token
+    from src.domain.schemas import AssetMaintenanceUpdate
+    from src.use_cases.import_spreadsheet_use_cases import ExecuteSpreadsheetImportUseCase
+    from src.infrastructure.spreadsheet_parser import ParsedSpreadsheet, ParsedSpreadsheetRow
+
+    tecnico = create_test_user(email="tec_p12@empresa.com", role="tecnico")
+    colab = create_test_user(email="col_p12@empresa.com", role="colaborador")
+    inact = create_test_user(email="inact_p12@empresa.com", role="colaborador", is_active=False)
+
+    # require_tecnico_role (lines 69-74 of dependencies.py)
+    assert require_tecnico_role(tecnico) == tecnico
+    with pytest.raises(HTTPException) as exc_info:
+        require_tecnico_role(colab)
+    assert exc_info.value.status_code == 403
+
+    # Location delete 409 via API (location_routes.py 84-85, location_use_cases.py 108)
+    cat = Category(name="Cat P12", requires_serial_number=True)
+    loc = Location(building="Bld P12", floor="1", sector="TI")
+    db_session.add_all([cat, loc])
+    db_session.flush()
+
+    asset = Asset(
+        patrimony_number="PAT-P12-01",
+        serial_number="SN-P12-01",
+        description="Ativo P12",
+        category_id=cat.id,
+        location_id=loc.id,
+        brand="Dell",
+    )
+    db_session.add(asset)
+    db_session.flush()
+
+    token = create_access_token(
+        {"sub": str(tecnico.id), "email": tecnico.email, "role": tecnico.role}
+    )
+    client.cookies.set("access_token", token)
+    resp_loc_conflict = await client.delete(f"/api/v1/locations/{loc.id}")
+    assert resp_loc_conflict.status_code == 409
+
+    # get_asset_suggestions sem prefix (branch 357->359 in repositories.py)
+    resp_sugg_no_q = await client.get("/api/v1/assets/suggestions?field=brand")
+    assert resp_sugg_no_q.status_code == 200
+    assert "Dell" in resp_sugg_no_q.json()
+
+    # AssetMovementUseCases: to_user inativo (movement_use_cases.py line 76)
+    mov_uc = AssetMovementUseCases(db_session)
+    with pytest.raises(BusinessRuleError):
+        mov_uc.create_movement(
+            asset.id,
+            AssetMovementCreate(
+                origin_location_id=loc.id,
+                dest_location_id=loc.id,
+                to_user_id=inact.id,
+            ),
+            moved_by_id=tecnico.id,
+        )
+
+    # MaintenanceUseCases: update_maintenance sem campos opcionais (branches 84->90->94->96->98->101)
+    maint_uc = MaintenanceUseCases(db_session)
+    m_res = maint_uc.create_maintenance(
+        asset.id,
+        AssetMaintenanceCreate(maintenance_type="preventiva", description="Inicial"),
+        registered_by_id=tecnico.id,
+    )
+    m_up_empty = maint_uc.update_maintenance(asset.id, m_res.id, AssetMaintenanceUpdate())
+    assert m_up_empty.description == "Inicial"
+
+    # Rollbacks para delete_category, delete_location, update_maintenance, delete_maintenance
+    mock_db = MagicMock(spec=Session)
+    mock_db.commit.side_effect = RuntimeError("Commit error")
+
+    cat_uc = CategoryUseCases(mock_db)
+    cat_uc.repo.get_by_id = MagicMock(return_value=cat)
+    cat_uc.repo.has_assets = MagicMock(return_value=False)
+    with pytest.raises(RuntimeError):
+        cat_uc.delete_category(cat.id)
+    mock_db.rollback.assert_called_once()
+
+    mock_db.reset_mock()
+    loc_uc = LocationUseCases(mock_db)
+    loc_uc.repo.get_by_id = MagicMock(return_value=loc)
+    loc_uc.repo.has_dependencies = MagicMock(return_value=False)
+    with pytest.raises(RuntimeError):
+        loc_uc.delete_location(loc.id)
+    mock_db.rollback.assert_called_once()
+
+    mock_db.reset_mock()
+    mock_maint = AssetMaintenance(
+        id=m_res.id,
+        asset_id=asset.id,
+        registered_by_id=tecnico.id,
+        maintenance_type="preventiva",
+        description="D",
+    )
+    m_uc_mock = MaintenanceUseCases(mock_db)
+    m_uc_mock.asset_repo.get_by_id = MagicMock(return_value=asset)
+    m_uc_mock.maintenance_repo.get_by_id = MagicMock(return_value=mock_maint)
+    with pytest.raises(RuntimeError):
+        m_uc_mock.update_maintenance(asset.id, m_res.id, AssetMaintenanceUpdate(description="X"))
+    mock_db.rollback.assert_called_once()
+
+    mock_db.reset_mock()
+    with pytest.raises(RuntimeError):
+        m_uc_mock.delete_maintenance(asset.id, m_res.id)
+    mock_db.rollback.assert_called_once()
+
+    # Import spreadsheet branches: specs_raw, purchase_cost formats, purchase_date, requires_serial_number error
+    mock_parsed = ParsedSpreadsheet(
+        filename="p12.xlsx",
+        headers=["TIPO"],
+        detected_sheet="Planilha",
+        rows=[
+            ParsedSpreadsheetRow(
+                row_number=1,
+                equipment_type="Cat P12",
+                location="TI",
+                status="EM USO",
+                description="Upsert com custo BR",
+                patrimony_number="PAT-P12-01",
+                serial_number="SN-P12-01",
+                specs_raw="i7 16GB",
+                purchase_cost="R$ 4.500,50",
+                purchase_date=datetime(2025, 6, 15, tzinfo=timezone.utc),
+            ),
+            ParsedSpreadsheetRow(
+                row_number=2,
+                equipment_type="Cat P12",
+                location="TI",
+                status="DISPONIVEL",
+                description="Upsert com custo simples",
+                patrimony_number="PAT-P12-01",
+                serial_number="SN-P12-01",
+                purchase_cost="350,75",
+            ),
+            ParsedSpreadsheetRow(
+                row_number=3,
+                equipment_type="Cat P12",
+                location="TI",
+                status="DISPONIVEL",
+                description="Upsert com custo invalido e negativo",
+                patrimony_number="PAT-P12-01",
+                serial_number="SN-P12-01",
+                purchase_cost="invalido",
+            ),
+            ParsedSpreadsheetRow(
+                row_number=4,
+                equipment_type="Cat P12",
+                location="TI",
+                status="DISPONIVEL",
+                description="Upsert com custo negativo",
+                patrimony_number="PAT-P12-01",
+                serial_number="SN-P12-01",
+                purchase_cost="-10,00",
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        "src.use_cases.import_spreadsheet_use_cases.parse_spreadsheet",
+        lambda *args, **kwargs: mock_parsed,
+    )
+    imp_uc = ExecuteSpreadsheetImportUseCase(db_session, registered_by_id=tecnico.id)
+    imp_res = imp_uc.execute(b"dummy", "p12.xlsx")
+    assert imp_res.updated_count == 4
+    db_session.refresh(asset)
+    assert asset.purchase_cost == Decimal("350.75")
+    assert asset.purchase_date == date(2025, 6, 15)
+
+    # requires_serial_number error during import (line 191)
+    mock_parsed_err = ParsedSpreadsheet(
+        filename="err.xlsx",
+        headers=["TIPO"],
+        detected_sheet="Planilha",
+        rows=[
+            ParsedSpreadsheetRow(
+                row_number=1,
+                equipment_type="Cat P12",
+                location="TI",
+                status="DISPONIVEL",
+                description="Sem serial",
+                patrimony_number="PAT-NO-SN",
+                serial_number=None,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "src.use_cases.import_spreadsheet_use_cases.parse_spreadsheet",
+        lambda *args, **kwargs: mock_parsed_err,
+    )
+    with pytest.raises(ValueError, match="exige o preenchimento obrigatório do número de série"):
+        imp_uc.execute(b"dummy", "err.xlsx")

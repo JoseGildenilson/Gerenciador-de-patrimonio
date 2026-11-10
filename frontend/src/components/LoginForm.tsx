@@ -80,7 +80,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: undefined });
             }}
             disabled={isSubmitting}
-            placeholder="tecnico@empresa.com"
+            placeholder="tecnico@sispatrimonio.edu.br"
             className={`w-full pl-9 pr-3 py-2 bg-zinc-950 border rounded-xl text-xs text-zinc-100 placeholder-zinc-500 outline-none transition-all ${
               fieldErrors.email
                 ? 'border-red-500/70 focus:border-red-500'

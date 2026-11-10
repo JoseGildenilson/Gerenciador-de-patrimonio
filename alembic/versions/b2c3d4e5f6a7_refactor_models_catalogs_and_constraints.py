@@ -4,6 +4,7 @@ Revision ID: b2c3d4e5f6a7
 Revises: a1b2c3d4e5f6
 Create Date: 2026-10-14 00:00:00.000000
 """
+
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
@@ -25,7 +26,12 @@ def upgrade() -> None:
         "equipment_types",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_equipment_types_name"),
@@ -35,7 +41,12 @@ def upgrade() -> None:
         "sectors",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_sectors_name"),
@@ -45,7 +56,12 @@ def upgrade() -> None:
         "equipment_statuses",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_equipment_statuses_name"),
@@ -55,7 +71,12 @@ def upgrade() -> None:
         "maintenance_types",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_maintenance_types_name"),
@@ -73,11 +94,22 @@ def upgrade() -> None:
     op.execute("CREATE UNIQUE INDEX uq_users_email_lower ON users (LOWER(email));")
 
     # 5. Alterações na tabela login_attempts
-    op.add_column("login_attempts", sa.Column("email_attempted", sa.String(length=255), nullable=False, server_default=""))
+    op.add_column(
+        "login_attempts",
+        sa.Column("email_attempted", sa.String(length=255), nullable=False, server_default=""),
+    )
     op.execute("ALTER TABLE login_attempts ALTER COLUMN email_attempted DROP DEFAULT;")
-    op.execute("ALTER TABLE login_attempts ALTER COLUMN ip_address TYPE inet USING ip_address::inet;")
-    op.create_index("ix_login_attempts_ip_attempted_at", "login_attempts", ["ip_address", "attempted_at"])
-    op.create_index("ix_login_attempts_email_attempted_at", "login_attempts", ["email_attempted", "attempted_at"])
+    op.execute(
+        "ALTER TABLE login_attempts ALTER COLUMN ip_address TYPE inet USING ip_address::inet;"
+    )
+    op.create_index(
+        "ix_login_attempts_ip_attempted_at", "login_attempts", ["ip_address", "attempted_at"]
+    )
+    op.create_index(
+        "ix_login_attempts_email_attempted_at",
+        "login_attempts",
+        ["email_attempted", "attempted_at"],
+    )
 
     # 6. Alterações na tabela equipments
     op.execute("DROP INDEX IF EXISTS ix_equipments_equipment_type;")
@@ -100,45 +132,134 @@ def upgrade() -> None:
     op.add_column("equipments", sa.Column("status_id", sa.Integer(), nullable=False))
     op.add_column("equipments", sa.Column("ip_address", INET(), nullable=True))
     op.add_column("equipments", sa.Column("mac_address", MACADDR(), nullable=True))
-    op.add_column("equipments", sa.Column("printer_identifier", sa.String(length=255), nullable=True))
-    op.add_column("equipments", sa.Column("windows_product_key_encrypted", sa.Text(), nullable=True))
-    op.add_column("equipments", sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False))
+    op.add_column(
+        "equipments", sa.Column("printer_identifier", sa.String(length=255), nullable=True)
+    )
+    op.add_column(
+        "equipments", sa.Column("windows_product_key_encrypted", sa.Text(), nullable=True)
+    )
+    op.add_column(
+        "equipments",
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+    )
     op.add_column("equipments", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
 
     op.alter_column("equipments", "description", existing_type=sa.Text(), nullable=True)
-    op.alter_column("equipments", "patrimony_number", existing_type=sa.String(length=255), nullable=False)
+    op.alter_column(
+        "equipments", "patrimony_number", existing_type=sa.String(length=255), nullable=False
+    )
 
-    op.create_foreign_key("fk_equipments_equipment_type_id", "equipments", "equipment_types", ["equipment_type_id"], ["id"])
+    op.create_foreign_key(
+        "fk_equipments_equipment_type_id",
+        "equipments",
+        "equipment_types",
+        ["equipment_type_id"],
+        ["id"],
+    )
     op.create_foreign_key("fk_equipments_sector_id", "equipments", "sectors", ["sector_id"], ["id"])
-    op.create_foreign_key("fk_equipments_status_id", "equipments", "equipment_statuses", ["status_id"], ["id"])
+    op.create_foreign_key(
+        "fk_equipments_status_id", "equipments", "equipment_statuses", ["status_id"], ["id"]
+    )
 
     # 7. Alterações na tabela equipment_movements
     op.drop_column("equipment_movements", "origin_location")
     op.drop_column("equipment_movements", "destination_location")
 
-    op.add_column("equipment_movements", sa.Column("origin_sector_id", sa.Integer(), nullable=False))
-    op.add_column("equipment_movements", sa.Column("destination_sector_id", sa.Integer(), nullable=False))
-    op.add_column("equipment_movements", sa.Column("performed_by_user_id", sa.Integer(), nullable=False))
-    op.add_column("equipment_movements", sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False))
+    op.add_column(
+        "equipment_movements", sa.Column("origin_sector_id", sa.Integer(), nullable=False)
+    )
+    op.add_column(
+        "equipment_movements", sa.Column("destination_sector_id", sa.Integer(), nullable=False)
+    )
+    op.add_column(
+        "equipment_movements", sa.Column("performed_by_user_id", sa.Integer(), nullable=False)
+    )
+    op.add_column(
+        "equipment_movements",
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+    )
 
-    op.create_foreign_key("fk_equipment_movements_origin_sector_id", "equipment_movements", "sectors", ["origin_sector_id"], ["id"])
-    op.create_foreign_key("fk_equipment_movements_destination_sector_id", "equipment_movements", "sectors", ["destination_sector_id"], ["id"])
-    op.create_foreign_key("fk_equipment_movements_performed_by_user_id", "equipment_movements", "users", ["performed_by_user_id"], ["id"])
+    op.create_foreign_key(
+        "fk_equipment_movements_origin_sector_id",
+        "equipment_movements",
+        "sectors",
+        ["origin_sector_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        "fk_equipment_movements_destination_sector_id",
+        "equipment_movements",
+        "sectors",
+        ["destination_sector_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        "fk_equipment_movements_performed_by_user_id",
+        "equipment_movements",
+        "users",
+        ["performed_by_user_id"],
+        ["id"],
+    )
 
     # 8. Alterações na tabela equipment_maintenances
     op.drop_column("equipment_maintenances", "maintenance_date")
     op.drop_column("equipment_maintenances", "maintenance_type")
 
-    op.add_column("equipment_maintenances", sa.Column("started_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False))
-    op.add_column("equipment_maintenances", sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("equipment_maintenances", sa.Column("maintenance_type_id", sa.Integer(), nullable=False))
-    op.add_column("equipment_maintenances", sa.Column("performed_by_user_id", sa.Integer(), nullable=True))
-    op.add_column("equipment_maintenances", sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False))
+    op.add_column(
+        "equipment_maintenances",
+        sa.Column(
+            "started_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+    )
+    op.add_column(
+        "equipment_maintenances",
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+    )
+    op.add_column(
+        "equipment_maintenances", sa.Column("maintenance_type_id", sa.Integer(), nullable=False)
+    )
+    op.add_column(
+        "equipment_maintenances", sa.Column("performed_by_user_id", sa.Integer(), nullable=True)
+    )
+    op.add_column(
+        "equipment_maintenances",
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+    )
 
     op.alter_column("equipment_maintenances", "description", existing_type=sa.Text(), nullable=True)
 
-    op.create_foreign_key("fk_equipment_maintenances_maintenance_type_id", "equipment_maintenances", "maintenance_types", ["maintenance_type_id"], ["id"])
-    op.create_foreign_key("fk_equipment_maintenances_performed_by_user_id", "equipment_maintenances", "users", ["performed_by_user_id"], ["id"])
+    op.create_foreign_key(
+        "fk_equipment_maintenances_maintenance_type_id",
+        "equipment_maintenances",
+        "maintenance_types",
+        ["maintenance_type_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        "fk_equipment_maintenances_performed_by_user_id",
+        "equipment_maintenances",
+        "users",
+        ["performed_by_user_id"],
+        ["id"],
+    )
 
     # 9. Constraints CHECK
     op.create_check_constraint(
@@ -172,12 +293,20 @@ def upgrade() -> None:
         "CREATE UNIQUE INDEX uq_equipment_maintenances_one_open_per_equipment "
         "ON equipment_maintenances (equipment_id) WHERE completed_at IS NULL;"
     )
-    op.execute("CREATE UNIQUE INDEX uq_equipment_types_name_lower ON equipment_types (LOWER(name));")
+    op.execute(
+        "CREATE UNIQUE INDEX uq_equipment_types_name_lower ON equipment_types (LOWER(name));"
+    )
     op.execute("CREATE UNIQUE INDEX uq_sectors_name_lower ON sectors (LOWER(name));")
-    op.execute("CREATE UNIQUE INDEX uq_equipment_statuses_name_lower ON equipment_statuses (LOWER(name));")
-    op.execute("CREATE UNIQUE INDEX uq_maintenance_types_name_lower ON maintenance_types (LOWER(name));")
+    op.execute(
+        "CREATE UNIQUE INDEX uq_equipment_statuses_name_lower ON equipment_statuses (LOWER(name));"
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX uq_maintenance_types_name_lower ON maintenance_types (LOWER(name));"
+    )
 
-    op.execute("CREATE UNIQUE INDEX uq_equipments_patrimony_number_lower ON equipments (LOWER(patrimony_number));")
+    op.execute(
+        "CREATE UNIQUE INDEX uq_equipments_patrimony_number_lower ON equipments (LOWER(patrimony_number));"
+    )
     op.execute(
         "CREATE UNIQUE INDEX uq_equipments_serial_number_lower "
         "ON equipments (LOWER(serial_number)) WHERE serial_number IS NOT NULL;"
@@ -266,7 +395,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS trg_equipment_maintenances_updated_at ON equipment_maintenances;")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_equipment_maintenances_updated_at ON equipment_maintenances;"
+    )
     op.execute("DROP TRIGGER IF EXISTS trg_equipment_movements_updated_at ON equipment_movements;")
     op.execute("DROP TRIGGER IF EXISTS trg_equipments_updated_at ON equipments;")
     op.execute("DROP FUNCTION IF EXISTS set_updated_at();")
@@ -282,7 +413,9 @@ def downgrade() -> None:
     # Reverte alterações em login_attempts e users para o estado anterior
     op.drop_index("ix_login_attempts_email_attempted_at", table_name="login_attempts")
     op.drop_index("ix_login_attempts_ip_attempted_at", table_name="login_attempts")
-    op.execute("ALTER TABLE login_attempts ALTER COLUMN ip_address TYPE varchar(45) USING ip_address::text;")
+    op.execute(
+        "ALTER TABLE login_attempts ALTER COLUMN ip_address TYPE varchar(45) USING ip_address::text;"
+    )
     op.drop_column("login_attempts", "email_attempted")
 
     op.execute("DROP INDEX IF EXISTS uq_users_email_lower;")

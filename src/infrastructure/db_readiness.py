@@ -3,7 +3,8 @@
 import os
 import sys
 import time
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect, select
+from sqlalchemy.dialects import postgresql
 from alembic.config import Config
 from alembic import command
 from src.core.config import settings
@@ -22,7 +23,7 @@ def wait_for_database(db_url: str, max_retries: int = 30, retry_interval: float 
         try:
             temp_engine = create_engine(db_url, connect_args=connect_args)
             with temp_engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
+                conn.execute(select(1))
             temp_engine.dispose()
             print("==> Conexão com banco de dados estabelecida com sucesso!")
             return True
@@ -63,6 +64,20 @@ def reconcile_alembic_schema(engine, alembic_cfg: Config | None = None) -> str |
     return target_revision
 
 
+def ensure_pg_enums(engine) -> None:
+    """Garante a existência dos tipos ENUM no PostgreSQL se o dialeto for postgresql."""
+    if engine.dialect.name != "postgresql":
+        return
+
+    enums = (
+        postgresql.ENUM("administrador", "tecnico", "colaborador", name="user_role"),
+        postgresql.ENUM("disponivel", "em_uso", "em_manutencao", "baixado", name="asset_status"),
+        postgresql.ENUM("preventiva", "corretiva", name="maintenance_type"),
+    )
+    for pg_enum in enums:
+        pg_enum.create(engine, checkfirst=True)
+
+
 def main() -> int:
     """Ponto de entrada para validação de prontidão e reconciliação via CLI."""
     db_url = os.getenv("DATABASE_URL") or settings.DATABASE_URL
@@ -75,6 +90,7 @@ def main() -> int:
 
     ready_engine = create_engine(db_url, connect_args=connect_args)
     try:
+        ensure_pg_enums(ready_engine)
         reconcile_alembic_schema(ready_engine)
     finally:
         ready_engine.dispose()

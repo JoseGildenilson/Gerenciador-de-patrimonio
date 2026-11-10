@@ -188,6 +188,18 @@ async def test_asset_api_lifecycle_validation_and_filters(
     )
     assert resp_update_dup_serial.status_code == 409
 
+    # Falha ao remover serial de ativo cuja categoria exige serial (HTTP 400 - FR-005)
+    resp_update_clear_serial = await client.put(
+        f"/api/v1/assets/{asset_id}", json={"serial_number": ""}
+    )
+    assert resp_update_clear_serial.status_code == 400
+
+    # Falha ao mudar ativo sem serial para categoria que exige serial sem informar serial (HTTP 400 - FR-005)
+    resp_update_cat_req_serial = await client.put(
+        f"/api/v1/assets/{resp_mob.json()['id']}", json={"category_id": cat_req_serial.id}
+    )
+    assert resp_update_cat_req_serial.status_code == 400
+
     # 404 nos relacionamentos de update
     assert (
         await client.put(f"/api/v1/assets/{asset_id}", json={"category_id": 99999})
@@ -200,7 +212,60 @@ async def test_asset_api_lifecycle_validation_and_filters(
     ).status_code == 404
     assert (await client.put("/api/v1/assets/99999", json={"description": "X"})).status_code == 404
 
-    # 10. Soft delete do ativo
+    # 10. Export, Suggestions, Users list, Category delete e validação de usuário inativo
+    resp_export = await client.get(f"/api/v1/assets/export?location_id={loc1.id}")
+    assert resp_export.status_code == 200
+    assert len(resp_export.content) > 0
+
+    resp_sugg = await client.get("/api/v1/assets/suggestions?field=brand&prefix=De")
+    assert resp_sugg.status_code == 200
+    assert "Dell" in resp_sugg.json()
+
+    resp_sugg_invalid = await client.get("/api/v1/assets/suggestions?field=invalid_field")
+    assert resp_sugg_invalid.status_code == 200
+    assert resp_sugg_invalid.json() == []
+
+    resp_users = await client.get("/api/v1/users")
+    assert resp_users.status_code == 200
+    assert len(resp_users.json()) >= 1
+
+    # Usuário inativo não pode receber ativo no create nem no update
+    inactive_user = create_test_user(email="inativo_asset@empresa.com", is_active=False)
+    resp_create_inact = await client.post(
+        "/api/v1/assets",
+        json={
+            **asset_ok_payload,
+            "patrimony_number": "PAT-INACT-01",
+            "serial_number": "SN-INACT-01",
+            "assigned_user_id": inactive_user.id,
+        },
+    )
+    assert resp_create_inact.status_code == 400
+
+    resp_up_inact = await client.put(
+        f"/api/v1/assets/{asset_id}", json={"assigned_user_id": inactive_user.id}
+    )
+    assert resp_up_inact.status_code == 400
+
+    # Limpar assigned_user_id com null explícito
+    resp_up_null_user = await client.put(
+        f"/api/v1/assets/{asset_id}", json={"assigned_user_id": None}
+    )
+    assert resp_up_null_user.status_code == 200
+    assert resp_up_null_user.json()["assigned_user_id"] is None
+
+    # Excluir categoria com ativos vinculados -> 409, inexistente -> 404, livre -> 204
+    assert (await client.delete(f"/api/v1/categories/{cat_req_serial.id}")).status_code == 409
+    assert (await client.delete("/api/v1/categories/99999")).status_code == 404
+    resp_new_cat = await client.post(
+        "/api/v1/categories", json={"name": "Cat Para Deletar", "requires_serial_number": False}
+    )
+    assert resp_new_cat.status_code == 201
+    assert (
+        await client.delete(f"/api/v1/categories/{resp_new_cat.json()['id']}")
+    ).status_code == 204
+
+    # 11. Soft delete do ativo
     resp_del = await client.delete(f"/api/v1/assets/{asset_id}")
     assert resp_del.status_code == 204
 

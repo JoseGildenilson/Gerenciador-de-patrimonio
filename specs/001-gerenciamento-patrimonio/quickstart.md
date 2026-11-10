@@ -123,8 +123,46 @@ uv run pytest tests/test_migrations.py -k "test_alembic_migrations_lifecycle" -v
 
 ---
 
-## 3. Validação da Cobertura de Testes (100% Quality Gate)
+### 2.5. Validação de Observabilidade e Logs de SQL
+1. **Ativar o Servidor com Variável de Log**:
+   ```bash
+   LOG_SQL_STATEMENTS=true uv run uvicorn src.main:app --port 8000
+   ```
+2. **Executar Requisição de Consulta ou Criação**:
+   ```bash
+   curl -X GET http://localhost:8000/api/v1/assets
+   ```
+3. **Resultado Esperado no Terminal**:
+   - Bloco formatado com `[SQL QUERY]`, query SQL gerada, parâmetros e duração em milissegundos.
+   - Consultas periódicas de healthcheck (`SELECT 1`) não aparecem no log.
+   - Parâmetros com campos protegidos (`password_hash`) exibem o valor `[REDACTED]`.
+
+---
+
+## 3. Validação da Cobertura de Testes Backend, E2E e Frontend (100% Quality Gate)
+
+### 3.1. Suíte Backend (100% linhas e branches)
 ```bash
 PYTHONPATH=. uv run --extra dev pytest --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=100
 ```
 - **Resultado Esperado**: 100% de cobertura em linhas e branches, zero falhas.
+
+### 3.2. Suíte End-to-End (E2E)
+```bash
+PYTHONPATH=. uv run --extra dev pytest tests/e2e/ -v
+```
+- **Resultado Esperado**: Todos os tiers E2E executando contra `/api/v1/assets`, `/api/v1/categories`, `/api/v1/locations`, `/api/v1/movements` e `/api/v1/auth` sem falhas.
+
+### 3.3. Validação de Tipagem e Testes do Frontend React
+```bash
+cd frontend && npx tsc --noEmit && npm test -- --run
+```
+- **Resultado Esperado**: Compilação TypeScript limpa e 100% dos testes Vitest passando com os contratos canônicos de `assets`.
+
+### 3.4. Verificação Ponta a Ponta via Docker Compose
+```bash
+docker compose up -d --build
+docker compose exec backend uv run db-seed
+```
+- Acessar `http://localhost:5173` com `admin@sispatrimonio.edu.br` (`Admin@123`) e `tecnico@sispatrimonio.edu.br` (`Tecnico@123`).
+- Confirmar carregamento de métricas no Dashboard, listagem e filtros de ativos, gerenciamento de categorias e localizações físicas, cadastro de ativo, renumeração de patrimônio, movimentação com aceite de termo, manutenção e exportação/importação de planilha `.xlsx` sem nenhum erro `404` ou `403` nos logs do `patrimonio_backend`.

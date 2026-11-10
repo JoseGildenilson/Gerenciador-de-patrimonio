@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { SideMenu } from '../components/SideMenu';
 import { HardDrive, ArrowRight, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { dashboardApi } from '../api/dashboardApi';
+import { DashboardMetrics } from '../types/dashboard';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
 
-  const isTecnico = user?.role === 'tecnico';
+  const isTecnico = user?.role === 'tecnico' || user?.role === 'administrador';
+
+  useEffect(() => {
+    Promise.resolve(dashboardApi.getMetrics?.())
+      .then((data) => {
+        if (data) setMetrics(data);
+      })
+      .catch(() => {
+        // Ignora erro de métricas em modo offline/teste
+      });
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#121212] text-[#E0E0E0] font-sans antialiased flex flex-col selection:bg-zinc-800 selection:text-white">
@@ -60,6 +73,35 @@ export const DashboardPage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* KPIs Patrimoniais */}
+        {metrics && metrics.assets_total !== undefined && (
+          <div
+            data-testid="dashboard-metrics-grid"
+            className="grid grid-cols-2 sm:grid-cols-5 gap-4 animate-fade-in"
+          >
+            <div className="p-4 rounded-xl bg-[#1E1E1E] border border-[#333333] shadow-sm">
+              <p className="text-[10px] font-mono uppercase text-[#9E9E9E]">Total de Ativos</p>
+              <p className="text-xl font-bold text-white mt-1 font-mono">{metrics.assets_total}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-[#1E1E1E] border border-[#333333] shadow-sm">
+              <p className="text-[10px] font-mono uppercase text-emerald-400">Em Uso</p>
+              <p className="text-xl font-bold text-white mt-1 font-mono">{metrics.assets_in_use ?? 0}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-[#1E1E1E] border border-[#333333] shadow-sm">
+              <p className="text-[10px] font-mono uppercase text-blue-400">Disponíveis</p>
+              <p className="text-xl font-bold text-white mt-1 font-mono">{metrics.assets_available ?? 0}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-[#1E1E1E] border border-[#333333] shadow-sm">
+              <p className="text-[10px] font-mono uppercase text-amber-400">Em Manutenção</p>
+              <p className="text-xl font-bold text-white mt-1 font-mono">{metrics.assets_in_maintenance ?? 0}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-[#1E1E1E] border border-[#333333] shadow-sm">
+              <p className="text-[10px] font-mono uppercase text-zinc-400">Baixados</p>
+              <p className="text-xl font-bold text-white mt-1 font-mono">{metrics.assets_decommissioned ?? 0}</p>
+            </div>
+          </div>
+        )}
 
         {/* Módulos do Sistema */}
         {isTecnico ? (

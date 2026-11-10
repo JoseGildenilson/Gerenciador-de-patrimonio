@@ -8,11 +8,11 @@
 -- Senhas criptografadas padrão: 'senha123'
 INSERT INTO users (id, name, email, password_hash, role, is_active, created_at, updated_at)
 VALUES
-    (1, 'Administrador do Sistema', 'admin@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$qN8kY3eU1w$sK7m9x0w7Z3b5r2q1...', 'administrador', true, NOW(), NOW()),
-    (2, 'Carlos Henrique Técnico', 'tecnico@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$qN8kY3eU1w$sK7m9x0w7Z3b5r2q1...', 'tecnico', true, NOW(), NOW()),
-    (3, 'Mariana Souza Silva', 'mariana.souza@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$qN8kY3eU1w$sK7m9x0w7Z3b5r2q1...', 'colaborador', true, NOW(), NOW()),
-    (4, 'Prof. Roberto Albuquerque', 'roberto.albuquerque@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$qN8kY3eU1w$sK7m9x0w7Z3b5r2q1...', 'colaborador', true, NOW(), NOW()),
-    (5, 'Fernanda Lima Coordenadora', 'fernanda.lima@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$qN8kY3eU1w$sK7m9x0w7Z3b5r2q1...', 'colaborador', true, NOW(), NOW())
+    (1, 'Administrador do Sistema', 'admin@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$Jf+AZzLOAY8vn4LZC1flsw$7UfpIiIzZ+toPgRy2xuhED+lMyb28Ubv27+cnteR0jQ', 'administrador', true, NOW(), NOW()),
+    (2, 'Carlos Henrique Técnico', 'tecnico@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$Jf+AZzLOAY8vn4LZC1flsw$7UfpIiIzZ+toPgRy2xuhED+lMyb28Ubv27+cnteR0jQ', 'tecnico', true, NOW(), NOW()),
+    (3, 'Mariana Souza Colaboradora', 'colaborador@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$Jf+AZzLOAY8vn4LZC1flsw$7UfpIiIzZ+toPgRy2xuhED+lMyb28Ubv27+cnteR0jQ', 'colaborador', true, NOW(), NOW()),
+    (4, 'Prof. Roberto Albuquerque', 'roberto.albuquerque@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$Jf+AZzLOAY8vn4LZC1flsw$7UfpIiIzZ+toPgRy2xuhED+lMyb28Ubv27+cnteR0jQ', 'colaborador', true, NOW(), NOW()),
+    (5, 'Fernanda Lima Coordenadora', 'fernanda.lima@sispatrimonio.edu.br', '$argon2id$v=19$m=65536,t=3,p=4$Jf+AZzLOAY8vn4LZC1flsw$7UfpIiIzZ+toPgRy2xuhED+lMyb28Ubv27+cnteR0jQ', 'colaborador', true, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id), 1) FROM users));

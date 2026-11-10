@@ -1,6 +1,6 @@
 """Rotas HTTP para gestão de ativos patrimoniais e renumeração."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from src.api.dependencies import get_current_user, require_tecnico_or_admin
 from src.core.database import get_db
@@ -61,6 +61,45 @@ def create_asset(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
+@router.get("/export")
+def export_assets(
+    category_id: int | None = Query(default=None),
+    location_id: int | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    search: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Exporta a relação filtrada de ativos em planilha Excel (.xlsx)."""
+    use_case = AssetUseCases(db)
+    xlsx_bytes = use_case.export_assets(
+        category_id=category_id,
+        location_id=location_id,
+        status=status_filter,
+        search=search,
+    )
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="ativos_patrimoniais.xlsx"'},
+    )
+
+
+@router.get("/suggestions", response_model=list[str])
+def get_asset_suggestions(
+    field: str = Query(..., description="Campo para sugestão"),
+    prefix: str | None = Query(default=None),
+    query: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Retorna lista de sugestões para autocomplete nos filtros de ativos."""
+    use_case = AssetUseCases(db)
+    return use_case.get_asset_suggestions(
+        field=field, query=prefix if prefix is not None else query
+    )
+
+
 @router.get("/{id}", response_model=AssetDetailResponse)
 def get_asset_detail(
     id: int,
@@ -88,6 +127,8 @@ def update_asset(
         return use_case.update_asset(id, data)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 

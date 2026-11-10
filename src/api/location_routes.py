@@ -67,3 +67,19 @@ def update_location(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_location(
+    id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_tecnico_or_admin),
+):
+    """Exclui uma localização física sem ativos ou movimentações vinculadas."""
+    use_case = LocationUseCases(db)
+    try:
+        use_case.delete_location(id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))

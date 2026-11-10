@@ -63,6 +63,8 @@ import src.core.database as core_db  # noqa: E402
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 core_db.engine = test_engine
 core_db.SessionLocal = TestingSessionLocal
+core_db.register_sql_logging_listeners(test_engine)
+settings.LOG_SQL_STATEMENTS = False
 
 
 @pytest.fixture(scope="session")

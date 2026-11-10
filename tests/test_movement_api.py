@@ -77,21 +77,7 @@ async def test_movement_api_transfer_and_custody_acceptance(
     # Aceite de termo inexistente (404)
     assert (await client.post("/api/v1/movements/99999/accept-term")).status_code == 404
 
-    # 4. Registrar baixa patrimonial (dest_location_id = None)
-    mov_baixa_payload = {
-        "origin_location_id": loc_eng.id,
-        "dest_location_id": None,
-        "from_user_id": colab2.id,
-        "to_user_id": None,
-        "notes": "Descarte / baixa do bem por obsolescência",
-    }
-    resp_baixa = await client.post(f"/api/v1/assets/{asset.id}/movements", json=mov_baixa_payload)
-    assert resp_baixa.status_code == 201
-    db_session.refresh(asset)
-    assert asset.status == "baixado"
-    assert asset.assigned_user_id is None
-
-    # 5. Erros de validação (HTTP 404)
+    # 4. Erros de validação de relacionamentos (HTTP 404) com ativo ativo
     assert (
         await client.post(
             f"/api/v1/assets/{asset.id}/movements",
@@ -116,3 +102,24 @@ async def test_movement_api_transfer_and_custody_acceptance(
     assert (
         await client.post("/api/v1/assets/99999/movements", json=mov_payload)
     ).status_code == 404
+
+    # 5. Registrar baixa patrimonial (dest_location_id = None)
+    mov_baixa_payload = {
+        "origin_location_id": loc_eng.id,
+        "dest_location_id": None,
+        "from_user_id": colab2.id,
+        "to_user_id": None,
+        "notes": "Descarte / baixa do bem por obsolescência",
+    }
+    resp_baixa = await client.post(f"/api/v1/assets/{asset.id}/movements", json=mov_baixa_payload)
+    assert resp_baixa.status_code == 201
+    db_session.refresh(asset)
+    assert asset.status == "baixado"
+    assert asset.assigned_user_id is None
+
+    # 6. Bloqueio de movimentação em ativo baixado sem restauração prévia (HTTP 400 - Edge Case 3)
+    resp_mov_baixado = await client.post(
+        f"/api/v1/assets/{asset.id}/movements",
+        json={"origin_location_id": loc_eng.id, "dest_location_id": loc_ti.id},
+    )
+    assert resp_mov_baixado.status_code == 400

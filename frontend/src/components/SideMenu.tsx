@@ -48,7 +48,7 @@ export const SideMenu: React.FC = () => {
     navigate('/login');
   };
 
-  const isTecnico = user?.role === 'tecnico';
+  const isTecnico = user?.role === 'tecnico' || user?.role === 'administrador';
   const isDashboardActive = location.pathname === '/dashboard';
   const isEquipamentosActive = location.pathname.startsWith('/equipamentos');
   const isImportacaoActive = location.pathname === '/importar' || location.pathname === '/import';

@@ -163,15 +163,52 @@ def test_main_failure_timeout():
         assert exit_code == 1
 
 
+def test_ensure_pg_enums_non_postgresql():
+    """Testa ensure_pg_enums em dialeto não postgresql (ignora execução)."""
+    mock_engine = MagicMock()
+    mock_engine.dialect.name = "sqlite"
+
+    db_readiness.ensure_pg_enums(mock_engine)
+
+    mock_engine.connect.assert_not_called()
+
+
+def test_ensure_pg_enums_postgresql():
+    """Testa ensure_pg_enums criando os 3 tipos ENUM nativos via SQLAlchemy postgresql.ENUM."""
+    mock_engine = MagicMock()
+    mock_engine.dialect.name = "postgresql"
+
+    with patch("src.infrastructure.db_readiness.postgresql.ENUM") as mock_enum_cls:
+        mock_enum_instance = MagicMock()
+        mock_enum_cls.return_value = mock_enum_instance
+
+        db_readiness.ensure_pg_enums(mock_engine)
+
+        assert mock_enum_cls.call_count == 3
+        assert mock_enum_instance.create.call_count == 3
+        mock_enum_instance.create.assert_called_with(mock_engine, checkfirst=True)
+
+
 def test_main_fallback_settings_database_url():
     """Testa uso de settings.DATABASE_URL quando DATABASE_URL não está no os.environ."""
     with (
         patch.dict("os.environ", {}, clear=True),
         patch("src.infrastructure.db_readiness.settings") as mock_settings,
         patch("src.infrastructure.db_readiness.wait_for_database", return_value=True) as mock_wait,
-        patch("src.infrastructure.db_readiness.reconcile_alembic_schema"),
+        patch("src.infrastructure.db_readiness.create_engine") as mock_create_engine,
+        patch("src.infrastructure.db_readiness.ensure_pg_enums") as mock_enums,
+        patch("src.infrastructure.db_readiness.reconcile_alembic_schema") as mock_reconcile,
     ):
         mock_settings.DATABASE_URL = "postgresql://localhost:5432/fallback_db"
+        mock_engine = MagicMock()
+        mock_create_engine.return_value = mock_engine
+
         exit_code = db_readiness.main()
         assert exit_code == 0
         mock_wait.assert_called_once_with("postgresql://localhost:5432/fallback_db")
+        mock_create_engine.assert_called_once_with(
+            "postgresql://localhost:5432/fallback_db", connect_args={}
+        )
+        mock_enums.assert_called_once_with(mock_engine)
+        mock_reconcile.assert_called_once_with(mock_engine)
+        mock_engine.dispose.assert_called_once()

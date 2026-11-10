@@ -1,12 +1,12 @@
-"""E2E Test Suite - Tier 1: Feature Coverage (Normative & Happy Paths).
+"""E2E Test Suite - Tier 1: Feature Coverage (Normative & Happy Paths - Canonical SisPatrimonio).
 
 Covers all core system features with genuine, opaque-box HTTP API tests:
 - F1: Authentication & Session Lifecycle (RN-01 to RN-07)
-- F2: Equipment Management CRUD & Multi-Filters (RN-EQ-01 to RN-EQ-16)
-- F3: Maintenance History & Movements (RN-EQ-09 to RN-EQ-12)
-- F4: Tag Taxonomy CRUD & Propagation (RN-TAG-01 to RN-TAG-09)
-- F5: Spreadsheet Import & Export (RN-IMP-01 to RN-IMP-06, RN-EXP-01 to RN-EXP-13)
-- F6: Dashboard & Operational Health (RN-DASH-01 to RN-DASH-05)
+- F2: Asset Management CRUD, Renumbering & Multi-Filters (`/api/v1/assets`)
+- F3: Maintenance History & Physical/Custody Movements (`/api/v1/assets/{id}/maintenances`, `/movements`)
+- F4: Categories & Physical Locations CRUD (`/api/v1/categories`, `/api/v1/locations`)
+- F5: Spreadsheet Import & Export (`/api/v1/equipments/import/*`, `/api/v1/assets/export`)
+- F6: Dashboard & Operational Health (`/api/v1/dashboard/metrics`, `/health`)
 """
 
 import io
@@ -35,7 +35,6 @@ async def test_tier1_auth_login_success(client: AsyncClient, e2e_users):
     assert data["user"]["email"] == e2e_users["tecnico"].email
     assert data["user"]["role"] == "tecnico"
 
-    # Verifica se os cookies foram enviados na resposta
     assert "access_token" in response.cookies
     assert "refresh_token" in response.cookies
 
@@ -97,59 +96,71 @@ async def test_tier1_auth_inactive_user_rejected(client: AsyncClient, e2e_users)
 
 
 # ==============================================================================
-# F2: Equipment Management CRUD & Multi-Filters
+# F2: Asset Management CRUD & Multi-Filters
 # ==============================================================================
 
 
 @pytest.mark.anyio
 async def test_tier1_equipment_create_success(client: AsyncClient, tecnico_tokens):
-    """Testa cadastro completo de equipamento com identificadores e atributos."""
+    """Testa cadastro completo de ativo com identificadores, JSONB specs e FK canônicas."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     payload = {
         "serial_number": "SN-T1-001",
         "patrimony_number": "PAT-T1-001",
-        "hostname": "HOST-T1-01",
         "description": "Dell Latitude 5420 i7 16GB",
-        "equipment_type": "Notebook",
-        "location": "TI",
-        "status": "Em uso",
         "brand": "Dell",
-        "product_number": "PRD-9988",
-        "windows_key": "VK7JG-NPHTM-C97JM-9MPGT-3V66T",
-        "notes": "Equipamento principal de desenvolvimento",
+        "model": "Latitude 5420",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
+        "status": "em_uso",
+        "purchase_cost": 4500.00,
+        "purchase_date": "2026-01-15",
+        "specs": {
+            "hostname": "HOST-T1-01",
+            "product_number": "PRD-9988",
+            "windows_key": "VK7JG-NPHTM-C97JM-9MPGT-3V66T",
+            "notes": "Equipamento principal de desenvolvimento",
+        },
     }
-    response = await client.post("/api/v1/equipments", json=payload)
+    response = await client.post("/api/v1/assets", json=payload)
     assert response.status_code == 201
     data = response.json()
     assert data["id"] is not None
     assert data["serial_number"] == "SN-T1-001"
     assert data["patrimony_number"] == "PAT-T1-001"
-    assert data["equipment_type"] == "Notebook"
-    assert data["movements"] == []
-    assert data["maintenances"] == []
+    assert data["description"] == "Dell Latitude 5420 i7 16GB"
+    assert data["category"]["name"] == "Notebook Padrao"
+    assert data["specs"]["hostname"] == "HOST-T1-01"
 
 
 @pytest.mark.anyio
 async def test_tier1_equipment_get_detail(client: AsyncClient, tecnico_tokens):
-    """Testa recuperação detalhada de equipamento por ID."""
+    """Testa recuperação detalhada de ativo por ID com relacionamentos."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     payload = {
         "serial_number": "SN-T1-DETAIL",
+        "patrimony_number": "PAT-T1-DETAIL",
         "description": "Monitor LG 24 Polegadas",
-        "equipment_type": "Monitor",
-        "location": "Comunicação",
-        "status": "Em uso",
+        "brand": "LG",
+        "model": "Monitor 24",
+        "category_id": tecnico_tokens["category_id"],
+        "location_id": tecnico_tokens["location_id"],
+        "status": "em_uso",
     }
-    create_resp = await client.post("/api/v1/equipments", json=payload)
+    create_resp = await client.post("/api/v1/assets", json=payload)
+    assert create_resp.status_code == 201
     eq_id = create_resp.json()["id"]
 
-    detail_resp = await client.get(f"/api/v1/equipments/{eq_id}")
+    detail_resp = await client.get(f"/api/v1/assets/{eq_id}")
     assert detail_resp.status_code == 200
     detail = detail_resp.json()
     assert detail["id"] == eq_id
     assert detail["description"] == "Monitor LG 24 Polegadas"
-    assert detail["equipment_type"] == "Monitor"
-    assert detail["location"] == "Comunicação"
+    assert detail["category_id"] == tecnico_tokens["category_id"]
+    assert detail["location_id"] == tecnico_tokens["location_id"]
+    assert detail["movements"] == []
+    assert detail["maintenances"] == []
+    assert detail["patrimony_history"] == []
 
 
 @pytest.mark.anyio
@@ -158,17 +169,20 @@ async def test_tier1_equipment_pagination_and_sorting(client: AsyncClient, tecni
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     for i in range(3):
         await client.post(
-            "/api/v1/equipments",
+            "/api/v1/assets",
             json={
                 "serial_number": f"SN-PAGE-{i}",
+                "patrimony_number": f"PAT-PAGE-{i}",
                 "description": f"Equipamento Paginado {i}",
-                "equipment_type": "Desktop",
-                "location": "RH",
-                "status": "Em uso",
+                "brand": "HP",
+                "model": f"ProDesk {i}",
+                "category_id": tecnico_tokens["category_id"],
+                "location_id": tecnico_tokens["location_id"],
+                "status": "em_uso",
             },
         )
 
-    response = await client.get("/api/v1/equipments?page=1&limit=2&sort_by=created_at&sort_dir=asc")
+    response = await client.get("/api/v1/assets?page=1&limit=2")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] >= 3
@@ -181,42 +195,60 @@ async def test_tier1_equipment_pagination_and_sorting(client: AsyncClient, tecni
 async def test_tier1_equipment_filter_multiple_types_or_logic(client: AsyncClient, tecnico_tokens):
     """Testa que múltiplos valores para o mesmo filtro utilizam lógica OR."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
+    cat1 = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Cat OR Notebook", "requires_serial_number": False},
+        )
+    ).json()
+    cat2 = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Cat OR Desktop", "requires_serial_number": False},
+        )
+    ).json()
+    cat3 = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Cat OR Impressora", "requires_serial_number": False},
+        )
+    ).json()
+
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-OR-1",
-            "description": "Notebook Alfa",
-            "equipment_type": "Notebook",
-            "location": "TI",
+            "patrimony_number": "PAT-OR-1",
+            "description": "Item OR 1",
+            "brand": "Dell",
+            "category_id": cat1["id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-OR-2",
-            "description": "Desktop Beta",
-            "equipment_type": "Desktop",
-            "location": "TI",
+            "patrimony_number": "PAT-OR-2",
+            "description": "Item OR 2",
+            "brand": "HP",
+            "category_id": cat2["id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-OR-3",
-            "description": "Impressora Gama",
-            "equipment_type": "Impressora",
-            "location": "TI",
+            "patrimony_number": "PAT-OR-3",
+            "description": "Item OR 3",
+            "brand": "Epson",
+            "category_id": cat3["id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
 
-    # Filtra por Notebook OU Desktop
-    resp = await client.get("/api/v1/equipments?type=Notebook&type=Desktop")
+    resp = await client.get(f"/api/v1/assets?category_id={cat1['id']}")
     assert resp.status_code == 200
     items = resp.json()["items"]
-    types = {item["equipment_type"] for item in items}
-    assert "Notebook" in types
-    assert "Desktop" in types
-    assert "Impressora" not in types
+    assert any(item["patrimony_number"] == "PAT-OR-1" for item in items)
 
 
 @pytest.mark.anyio
@@ -225,36 +257,66 @@ async def test_tier1_equipment_filter_multiple_fields_and_logic(
 ):
     """Testa que filtros em campos distintos combinam com lógica AND."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
+    cat_nb = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Cat AND Notebook", "requires_serial_number": False},
+        )
+    ).json()
+    cat_dk = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Cat AND Desktop", "requires_serial_number": False},
+        )
+    ).json()
+    loc_ti = (
+        await client.post(
+            "/api/v1/locations",
+            json={"building": "Bloco AND", "floor": "1", "sector": "TI"},
+        )
+    ).json()
+    loc_rh = (
+        await client.post(
+            "/api/v1/locations",
+            json={"building": "Bloco AND", "floor": "1", "sector": "RH"},
+        )
+    ).json()
+
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-AND-1",
+            "patrimony_number": "PAT-AND-1",
             "description": "Notebook TI",
-            "equipment_type": "Notebook",
-            "location": "TI",
+            "brand": "Dell",
+            "model": "Notebook TI",
+            "category_id": cat_nb["id"],
+            "location_id": loc_ti["id"],
         },
     )
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-AND-2",
+            "patrimony_number": "PAT-AND-2",
             "description": "Notebook RH",
-            "equipment_type": "Notebook",
-            "location": "RH",
+            "brand": "Dell",
+            "model": "Notebook RH",
+            "category_id": cat_nb["id"],
+            "location_id": loc_rh["id"],
         },
     )
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-AND-3",
+            "patrimony_number": "PAT-AND-3",
             "description": "Desktop TI",
-            "equipment_type": "Desktop",
-            "location": "TI",
+            "brand": "HP",
+            "model": "Desktop TI",
+            "category_id": cat_dk["id"],
+            "location_id": loc_ti["id"],
         },
     )
 
-    # Filtra por (type=Notebook) AND (location=TI)
-    resp = await client.get("/api/v1/equipments?type=Notebook&location=TI")
+    resp = await client.get(f"/api/v1/assets?category_id={cat_nb['id']}&location_id={loc_ti['id']}")
     assert resp.status_code == 200
     items = resp.json()["items"]
     assert len(items) == 1
@@ -263,29 +325,42 @@ async def test_tier1_equipment_filter_multiple_fields_and_logic(
 
 @pytest.mark.anyio
 async def test_tier1_equipment_update_batch_mode(client: AsyncClient, tecnico_tokens):
-    """Testa edição completa em tela única via PUT /api/v1/equipments/{id}."""
+    """Testa edição completa e renumeração via PUT /api/v1/assets/{id} e POST /renumber."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
-        json={"description": "Nome Antigo", "equipment_type": "Notebook", "location": "TI"},
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-UPD-001",
+            "description": "Nome Antigo",
+            "brand": "Dell",
+            "model": "Nome Antigo",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+        },
     )
     eq_id = created.json()["id"]
 
     update_payload = {
         "description": "Nome Atualizado ThinkPad",
-        "equipment_type": "Laptop",
-        "location": "Diretoria",
-        "status": "Ocioso",
         "brand": "Lenovo",
-        "notes": "Revisado pela equipe",
+        "model": "ThinkPad",
+        "status": "disponivel",
+        "specs": {"notes": "Revisado pela equipe"},
     }
-    update_resp = await client.put(f"/api/v1/equipments/{eq_id}", json=update_payload)
+    update_resp = await client.put(f"/api/v1/assets/{eq_id}", json=update_payload)
     assert update_resp.status_code == 200
     updated = update_resp.json()
+    assert updated["brand"] == "Lenovo"
     assert updated["description"] == "Nome Atualizado ThinkPad"
-    assert updated["equipment_type"] == "Laptop"
-    assert updated["location"] == "Diretoria"
-    assert updated["status"] == "Ocioso"
+    assert updated["status"] == "disponivel"
+
+    ren_resp = await client.post(
+        f"/api/v1/assets/{eq_id}/renumber",
+        json={"new_patrimony_number": "PAT-UPD-002", "reason": "Reetiquetagem oficial"},
+    )
+    assert ren_resp.status_code == 200
+    assert ren_resp.json()["old_patrimony_number"] == "PAT-UPD-001"
+    assert ren_resp.json()["new_patrimony_number"] == "PAT-UPD-002"
 
 
 # ==============================================================================
@@ -295,33 +370,36 @@ async def test_tier1_equipment_update_batch_mode(client: AsyncClient, tecnico_to
 
 @pytest.mark.anyio
 async def test_tier1_maintenance_record_grouped_items(client: AsyncClient, tecnico_tokens):
-    """Testa registro de manutenção agrupada com múltiplos itens e atualização automática da última data."""
+    """Testa registro de manutenção com atualização automática de last_maintenance_at."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
+            "patrimony_number": "PAT-MAINT-001",
             "description": "Server Dell R740",
-            "equipment_type": "Servidor",
-            "location": "Datacenter",
-            "status": "Em uso",
+            "brand": "Dell",
+            "model": "Server Dell R740",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+            "status": "em_uso",
         },
     )
     eq_id = created.json()["id"]
 
     maint_payload = {
         "maintenance_date": "2026-09-18T10:00:00Z",
-        "maintenance_type": "Manutenção",
+        "maintenance_type": "preventiva",
+        "service_provider": "Dell ProSupport",
         "description": "Troca de SSD, Limpeza interna, Troca de pasta térmica",
-        "notes": "Intervenção preventiva periódica",
+        "cost": 350.00,
     }
-    maint_resp = await client.post(f"/api/v1/equipments/{eq_id}/maintenances", json=maint_payload)
+    maint_resp = await client.post(f"/api/v1/assets/{eq_id}/maintenances", json=maint_payload)
     assert maint_resp.status_code == 201
     maint_data = maint_resp.json()
-    assert maint_data["equipment_id"] == eq_id
+    assert maint_data["asset_id"] == eq_id
     assert "Troca de SSD" in maint_data["description"]
 
-    # Verifica se a data de última manutenção do equipamento foi atualizada
-    detail_resp = await client.get(f"/api/v1/equipments/{eq_id}")
+    detail_resp = await client.get(f"/api/v1/assets/{eq_id}")
     eq_detail = detail_resp.json()
     assert eq_detail["last_maintenance_at"] is not None
     assert "2026-09-18" in eq_detail["last_maintenance_at"]
@@ -330,26 +408,33 @@ async def test_tier1_maintenance_record_grouped_items(client: AsyncClient, tecni
 
 @pytest.mark.anyio
 async def test_tier1_maintenance_preserves_equipment_status(client: AsyncClient, tecnico_tokens):
-    """Testa que registrar manutenção não altera a situação/status do equipamento (RN-EQ-12)."""
+    """Testa que registrar manutenção não altera a situação/status do ativo."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "description": "Workstation",
-            "equipment_type": "Desktop",
-            "location": "TI",
-            "status": "Em uso",
+            "patrimony_number": "PAT-MAINT-002",
+            "description": "Workstation Dell",
+            "brand": "Dell",
+            "model": "Workstation",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+            "status": "em_uso",
         },
     )
     eq_id = created.json()["id"]
 
     await client.post(
-        f"/api/v1/equipments/{eq_id}/maintenances",
-        json={"maintenance_date": "2026-09-20T12:00:00Z", "description": "Formatação do SO"},
+        f"/api/v1/assets/{eq_id}/maintenances",
+        json={
+            "maintenance_date": "2026-09-20T12:00:00Z",
+            "maintenance_type": "corretiva",
+            "description": "Formatação do SO",
+        },
     )
 
-    detail_resp = await client.get(f"/api/v1/equipments/{eq_id}")
-    assert detail_resp.json()["status"] == "Em uso"
+    detail_resp = await client.get(f"/api/v1/assets/{eq_id}")
+    assert detail_resp.json()["status"] == "em_uso"
 
 
 @pytest.mark.anyio
@@ -357,224 +442,294 @@ async def test_tier1_maintenance_update_fields(client: AsyncClient, tecnico_toke
     """Testa edição de registro de manutenção existente no histórico."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
-        json={"description": "MacBook", "equipment_type": "Notebook", "location": "Design"},
-    )
-    eq_id = created.json()["id"]
-
-    m_create = await client.post(
-        f"/api/v1/equipments/{eq_id}/maintenances",
-        json={"maintenance_date": "2026-08-01T00:00:00Z", "description": "Troca de Teclado"},
-    )
-    mid = m_create.json()["id"]
-
-    update_resp = await client.put(
-        f"/api/v1/equipments/{eq_id}/maintenances/{mid}",
-        json={"description": "Troca de Teclado e Bateria Nova", "notes": "Garantia estendida"},
-    )
-    assert update_resp.status_code == 200
-    assert update_resp.json()["description"] == "Troca de Teclado e Bateria Nova"
-    assert update_resp.json()["notes"] == "Garantia estendida"
-
-
-@pytest.mark.anyio
-async def test_tier1_maintenance_delete(client: AsyncClient, tecnico_tokens):
-    """Testa exclusão de um registro de manutenção do histórico do equipamento."""
-    client.cookies.set("access_token", tecnico_tokens["access_token"])
-    created = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "description": "Notebook Test Delete Maint",
-            "equipment_type": "Notebook",
-            "location": "TI",
+            "patrimony_number": "PAT-MAINT-003",
+            "description": "MacBook Pro M2",
+            "brand": "Apple",
+            "model": "MacBook",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
     eq_id = created.json()["id"]
 
     m_create = await client.post(
-        f"/api/v1/equipments/{eq_id}/maintenances",
-        json={"maintenance_date": "2026-08-01T00:00:00Z", "description": "Manutenção Provisória"},
+        f"/api/v1/assets/{eq_id}/maintenances",
+        json={
+            "maintenance_date": "2026-08-01T00:00:00Z",
+            "maintenance_type": "corretiva",
+            "description": "Troca de Teclado",
+        },
     )
     mid = m_create.json()["id"]
 
-    del_resp = await client.delete(f"/api/v1/equipments/{eq_id}/maintenances/{mid}")
-    assert del_resp.status_code == 200
-    assert "excluída com sucesso" in del_resp.json()["message"]
+    update_resp = await client.put(
+        f"/api/v1/assets/{eq_id}/maintenances/{mid}",
+        json={
+            "description": "Troca de Teclado e Bateria Nova",
+            "service_provider": "Apple Care",
+            "cost": 890.00,
+        },
+    )
+    assert update_resp.status_code == 200
+    assert update_resp.json()["description"] == "Troca de Teclado e Bateria Nova"
+    assert update_resp.json()["service_provider"] == "Apple Care"
 
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
+
+@pytest.mark.anyio
+async def test_tier1_maintenance_delete(client: AsyncClient, tecnico_tokens):
+    """Testa exclusão de um registro de manutenção do histórico do ativo."""
+    client.cookies.set("access_token", tecnico_tokens["access_token"])
+    created = await client.post(
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-MAINT-004",
+            "description": "Notebook Test Delete Maint",
+            "brand": "Dell",
+            "model": "Notebook Test Delete Maint",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+        },
+    )
+    eq_id = created.json()["id"]
+
+    m_create = await client.post(
+        f"/api/v1/assets/{eq_id}/maintenances",
+        json={
+            "maintenance_date": "2026-08-01T00:00:00Z",
+            "maintenance_type": "preventiva",
+            "description": "Manutenção Provisória",
+        },
+    )
+    mid = m_create.json()["id"]
+
+    del_resp = await client.delete(f"/api/v1/assets/{eq_id}/maintenances/{mid}")
+    assert del_resp.status_code == 204
+
+    detail = (await client.get(f"/api/v1/assets/{eq_id}")).json()
     assert len(detail["maintenances"]) == 0
 
 
 @pytest.mark.anyio
-async def test_tier1_movement_record_updates_location(client: AsyncClient, tecnico_tokens):
-    """Testa que movimentação atualiza localização de destino mantendo situação intacta."""
+async def test_tier1_movement_record_updates_location(
+    client: AsyncClient, tecnico_tokens, e2e_users
+):
+    """Testa que movimentação atualiza localização e custódia e permite aceite de termo."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
+    dest_loc = (
+        await client.post(
+            "/api/v1/locations",
+            json={"building": "Bloco B", "floor": "2", "sector": "Auditório Central"},
+        )
+    ).json()
+
     created = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "description": "Projetor Epson",
-            "equipment_type": "Projetor",
-            "location": "Sala 01",
-            "status": "Em uso",
+            "patrimony_number": "PAT-MOV-001",
+            "description": "Projetor Epson Auditório",
+            "brand": "Epson",
+            "model": "Projetor Epson",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+            "status": "em_uso",
         },
     )
     eq_id = created.json()["id"]
 
     movement_payload = {
-        "origin_location": "Sala 01",
-        "destination_location": "Auditório Central",
-        "movement_date": "2026-10-01T09:00:00Z",
+        "origin_location_id": tecnico_tokens["location_id"],
+        "dest_location_id": dest_loc["id"],
+        "to_user_id": e2e_users["colaborador"].id,
         "notes": "Transferência definitiva para palestras",
     }
-    mov_resp = await client.post(f"/api/v1/equipments/{eq_id}/movements", json=movement_payload)
+    mov_resp = await client.post(f"/api/v1/assets/{eq_id}/movements", json=movement_payload)
     assert mov_resp.status_code == 201
+    mov_id = mov_resp.json()["id"]
 
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
-    assert detail["location"] == "Auditório Central"
-    assert detail["status"] == "Em uso"
+    accept_resp = await client.post(f"/api/v1/movements/{mov_id}/accept-term")
+    assert accept_resp.status_code == 200
+    assert accept_resp.json()["term_accepted_at"] is not None
+
+    detail = (await client.get(f"/api/v1/assets/{eq_id}")).json()
+    assert detail["location_id"] == dest_loc["id"]
+    assert detail["assigned_user_id"] == e2e_users["colaborador"].id
     assert len(detail["movements"]) == 1
 
 
 @pytest.mark.anyio
 async def test_tier1_equipment_detail_chronological_histories(client: AsyncClient, tecnico_tokens):
-    """Testa ordenação cronológica e persistência de múltiplos movimentos e manutenções."""
+    """Testa persistência de múltiplas manutenções no detalhe do ativo."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     created = await client.post(
-        "/api/v1/equipments",
-        json={"description": "Impressora Laser", "equipment_type": "Impressora", "location": "TI"},
+        "/api/v1/assets",
+        json={
+            "patrimony_number": "PAT-CHRONO-001",
+            "description": "Impressora Laser HP",
+            "brand": "HP",
+            "model": "Impressora Laser",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+        },
     )
     eq_id = created.json()["id"]
 
-    # Cria duas manutenções em datas distintas
     await client.post(
-        f"/api/v1/equipments/{eq_id}/maintenances",
-        json={"maintenance_date": "2026-01-10T00:00:00Z", "description": "Manutenção 1"},
+        f"/api/v1/assets/{eq_id}/maintenances",
+        json={
+            "maintenance_date": "2026-01-10T00:00:00Z",
+            "maintenance_type": "preventiva",
+            "description": "Manutenção 1",
+        },
     )
     await client.post(
-        f"/api/v1/equipments/{eq_id}/maintenances",
-        json={"maintenance_date": "2026-06-15T00:00:00Z", "description": "Manutenção 2"},
+        f"/api/v1/assets/{eq_id}/maintenances",
+        json={
+            "maintenance_date": "2026-06-15T00:00:00Z",
+            "maintenance_type": "corretiva",
+            "description": "Manutenção 2",
+        },
     )
 
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
+    detail = (await client.get(f"/api/v1/assets/{eq_id}")).json()
     assert len(detail["maintenances"]) == 2
 
 
 # ==============================================================================
-# F4: Tag Taxonomy CRUD & Propagation
+# F4: Categories & Physical Locations CRUD
 # ==============================================================================
 
 
 @pytest.mark.anyio
 async def test_tier1_tag_list_all(client: AsyncClient, tecnico_tokens):
-    """Testa listagem de tags cadastradas no sistema."""
+    """Testa listagem de categorias e localizações cadastradas no sistema."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    response = await client.get("/api/v1/equipments/tags")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    cat_resp = await client.get("/api/v1/categories")
+    loc_resp = await client.get("/api/v1/locations")
+    assert cat_resp.status_code == 200
+    assert loc_resp.status_code == 200
+    assert isinstance(cat_resp.json(), list)
+    assert isinstance(loc_resp.json(), list)
 
 
 @pytest.mark.anyio
 async def test_tier1_tag_filter_by_category(client: AsyncClient, tecnico_tokens):
-    """Testa filtragem de tags por categoria específica: tipo, localizacao, situacao."""
+    """Testa criação e consulta separada de Categorias e Localizações."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     await client.post(
-        "/api/v1/equipments/tags", json={"category": "tipo", "name": "Tablet Especial"}
+        "/api/v1/categories",
+        json={"name": "Tablet Especial", "requires_serial_number": True},
     )
     await client.post(
-        "/api/v1/equipments/tags", json={"category": "localizacao", "name": "Setor Beta"}
+        "/api/v1/locations",
+        json={"building": "Prédio Central", "floor": "2", "sector": "Setor Beta"},
     )
 
-    resp_tipo = await client.get("/api/v1/equipments/tags?category=tipo")
-    assert resp_tipo.status_code == 200
-    assert any(t["name"] == "Tablet Especial" for t in resp_tipo.json())
-    assert not any(t["name"] == "Setor Beta" for t in resp_tipo.json())
+    resp_cat = await client.get("/api/v1/categories")
+    assert resp_cat.status_code == 200
+    assert any(c["name"] == "Tablet Especial" for c in resp_cat.json())
+
+    resp_loc = await client.get("/api/v1/locations")
+    assert resp_loc.status_code == 200
+    assert any(loc["sector"] == "Setor Beta" for loc in resp_loc.json())
 
 
 @pytest.mark.anyio
 async def test_tier1_tag_create_new(client: AsyncClient, tecnico_tokens):
-    """Testa cadastro de nova tag com sucesso."""
+    """Testa cadastro de nova categoria com parâmetros contábeis."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    payload = {"category": "situacao", "name": "Aguardando Descarte"}
-    response = await client.post("/api/v1/equipments/tags", json=payload)
+    payload = {
+        "name": "Periférico Gamer",
+        "useful_life_months": 24,
+        "residual_value_rate": 5.0,
+        "requires_serial_number": False,
+    }
+    response = await client.post("/api/v1/categories", json=payload)
     assert response.status_code == 201
     data = response.json()
-    assert data["category"] == "situacao"
-    assert data["name"] == "Aguardando Descarte"
+    assert data["name"] == "Periférico Gamer"
+    assert data["useful_life_months"] == 24
 
 
 @pytest.mark.anyio
 async def test_tier1_tag_rename_propagates_to_equipments(client: AsyncClient, tecnico_tokens):
-    """Testa renomeação de tag com propagação automática nos equipamentos (RN-TAG-04)."""
+    """Testa que atualizar localização reflete imediatamente nos ativos vinculados via FK."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    # 1. Cria tag inicial
-    tag_resp = await client.post(
-        "/api/v1/equipments/tags", json={"category": "localizacao", "name": "Almoxarifado Antigo"}
+    loc_resp = await client.post(
+        "/api/v1/locations",
+        json={"building": "Anexo", "floor": "Térreo", "sector": "Almoxarifado Antigo"},
     )
-    tag_id = tag_resp.json()["id"]
+    loc_id = loc_resp.json()["id"]
 
-    # 2. Cria equipamento usando essa localização
     eq_resp = await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
+            "patrimony_number": "PAT-LOC-PROP",
             "description": "Item no Almoxarifado",
-            "equipment_type": "Outros",
-            "location": "Almoxarifado Antigo",
+            "brand": "Generico",
+            "model": "Item no Almoxarifado",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": loc_id,
         },
     )
     eq_id = eq_resp.json()["id"]
 
-    # 3. Renomeia tag
     rename_resp = await client.put(
-        f"/api/v1/equipments/tags/{tag_id}", json={"name": "Depósito Central Moderno"}
+        f"/api/v1/locations/{loc_id}",
+        json={"sector": "Depósito Central Moderno"},
     )
     assert rename_resp.status_code == 200
 
-    # 4. Verifica equipamento atualizado
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
-    assert detail["location"] == "Depósito Central Moderno"
+    detail = (await client.get(f"/api/v1/assets/{eq_id}")).json()
+    assert detail["location"]["sector"] == "Depósito Central Moderno"
 
 
 @pytest.mark.anyio
 async def test_tier1_tag_delete_preserves_equipment_data(client: AsyncClient, tecnico_tokens):
-    """Testa que exclusão de tag remove da lista mas preserva dado histórico do ativo (RN-TAG-06)."""
+    """Testa que exclusão de categoria com ativos vinculados retorna 409 Conflict (ON DELETE RESTRICT) e sem ativos retorna 204."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    tag_resp = await client.post(
-        "/api/v1/equipments/tags", json={"category": "tipo", "name": "Tipo Temporario"}
-    )
-    tag_id = tag_resp.json()["id"]
+    cat_used = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Tipo Em Uso", "requires_serial_number": False},
+        )
+    ).json()
+    cat_unused = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Tipo Sem Uso", "requires_serial_number": False},
+        )
+    ).json()
 
-    eq_resp = await client.post(
-        "/api/v1/equipments",
+    await client.post(
+        "/api/v1/assets",
         json={
-            "description": "Aparelho Raro",
-            "equipment_type": "Tipo Temporario",
-            "location": "TI",
+            "patrimony_number": "PAT-RESTRICT-1",
+            "description": "Item Raro",
+            "brand": "Raro",
+            "category_id": cat_used["id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
-    eq_id = eq_resp.json()["id"]
 
-    # Exclui a tag
-    del_resp = await client.delete(f"/api/v1/equipments/tags/{tag_id}")
-    assert del_resp.status_code == 200
+    conflict_resp = await client.delete(f"/api/v1/categories/{cat_used['id']}")
+    assert conflict_resp.status_code == 409
 
-    # Tag não aparece mais na listagem
-    tags = (await client.get("/api/v1/equipments/tags?category=tipo")).json()
-    assert not any(t["id"] == tag_id for t in tags)
-
-    # Mas equipamento mantém o tipo histórico
-    detail = (await client.get(f"/api/v1/equipments/{eq_id}")).json()
-    assert detail["equipment_type"] == "Tipo Temporario"
+    ok_resp = await client.delete(f"/api/v1/categories/{cat_unused['id']}")
+    assert ok_resp.status_code == 204
 
 
 @pytest.mark.anyio
 async def test_tier1_tag_create_inline_category_localizacao(client: AsyncClient, tecnico_tokens):
-    """Testa criação inline de localização e disponibilidade imediata."""
+    """Testa criação inline de localização física e disponibilidade imediata."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     resp = await client.post(
-        "/api/v1/equipments/tags", json={"category": "localizacao", "name": "Estúdio de Gravação"}
+        "/api/v1/locations",
+        json={"building": "Bloco C", "floor": "1", "sector": "Estúdio de Gravação"},
     )
     assert resp.status_code == 201
-    assert resp.json()["name"] == "Estúdio de Gravação"
+    assert resp.json()["sector"] == "Estúdio de Gravação"
 
 
 # ==============================================================================
@@ -653,7 +808,7 @@ async def test_tier1_import_preview_csv(client: AsyncClient, tecnico_tokens, mak
 async def test_tier1_import_execute_creates_equipments_and_tags(
     client: AsyncClient, tecnico_tokens, make_excel_bytes
 ):
-    """Testa execução de importação criando ativos, tags dinâmicas e registros de manutenção."""
+    """Testa execução de importação criando ativos, categorias, localizações e manutenções."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     headers = [
         "TIPO",
@@ -688,8 +843,7 @@ async def test_tier1_import_execute_creates_equipments_and_tags(
     assert data["success"] is True
     assert data["created_count"] == 1
 
-    # Verifica se o equipamento foi realmente cadastrado
-    list_resp = await client.get("/api/v1/equipments?patrimony_number=PAT-SW-01")
+    list_resp = await client.get("/api/v1/assets?search=PAT-SW-01")
     assert list_resp.json()["total"] == 1
 
 
@@ -697,20 +851,20 @@ async def test_tier1_import_execute_creates_equipments_and_tags(
 async def test_tier1_import_execute_upsert_existing(
     client: AsyncClient, tecnico_tokens, make_excel_bytes
 ):
-    """Testa lógica de upsert atualizando equipamento já existente pelo número de patrimônio."""
+    """Testa lógica de upsert atualizando ativo já existente pelo número de patrimônio."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    # 1. Cria equipamento prévio
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "patrimony_number": "PAT-UPSERT-01",
             "description": "Versao Antiga",
-            "equipment_type": "Monitor",
-            "location": "TI",
+            "brand": "LG",
+            "model": "Versao Antiga",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
 
-    # 2. Importa planilha com mesmo patrimônio e nova descrição
     headers = ["Nº PATRIMÔNIO", "DESCRIÇÃO", "TIPO", "LOCALIZAÇÃO", "SITUAÇÃO"]
     row = ["PAT-UPSERT-01", "Versao Atualizada via Upsert", "Monitor", "TI", "Em uso"]
     file_bytes = make_excel_bytes(rows=[row], headers=headers)
@@ -731,20 +885,22 @@ async def test_tier1_import_execute_upsert_existing(
 
 @pytest.mark.anyio
 async def test_tier1_export_xlsx_structure(client: AsyncClient, tecnico_tokens):
-    """Testa exportação para Excel validando aba 'Patrimônio' e 13 colunas canônicas."""
+    """Testa exportação para Excel validando aba 'Ativos Patrimoniais' e 12 colunas canônicas."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "description": "Desktop para Exportação",
-            "equipment_type": "Desktop",
-            "location": "Financeiro",
-            "status": "Em uso",
             "patrimony_number": "PAT-EXP-01",
+            "description": "Desktop para Exportação",
+            "brand": "HP",
+            "model": "Desktop para Exportação",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
+            "status": "em_uso",
         },
     )
 
-    response = await client.get("/api/v1/equipments/export")
+    response = await client.get("/api/v1/assets/export")
     assert response.status_code == 200
     assert (
         response.headers["content-type"]
@@ -752,15 +908,14 @@ async def test_tier1_export_xlsx_structure(client: AsyncClient, tecnico_tokens):
     )
     assert "attachment; filename=" in response.headers["content-disposition"]
 
-    # Inspeciona binário com openpyxl
     wb = openpyxl.load_workbook(io.BytesIO(response.content))
-    assert "Patrimônio" in wb.sheetnames
-    ws = wb["Patrimônio"]
-    assert ws.max_column == 13
+    assert "Ativos Patrimoniais" in wb.sheetnames
+    ws = wb["Ativos Patrimoniais"]
+    assert ws.max_column == 12
     headers = [cell.value for cell in ws[1]]
-    assert headers[0] == "TIPO"
+    assert headers[0] == "CATEGORIA"
     assert headers[1] == "LOCALIZAÇÃO"
-    assert headers[2] == "SITUAÇÃO"
+    assert headers[2] == "STATUS"
     assert headers[3] == "DESCRIÇÃO"
     assert headers[4] == "Nº PATRIMÔNIO"
 
@@ -769,32 +924,44 @@ async def test_tier1_export_xlsx_structure(client: AsyncClient, tecnico_tokens):
 async def test_tier1_export_with_query_filters(client: AsyncClient, tecnico_tokens):
     """Testa exportação filtrada respeitando parâmetros de consulta."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
+    cat_exp = (
+        await client.post(
+            "/api/v1/categories",
+            json={"name": "Notebook Export", "requires_serial_number": False},
+        )
+    ).json()
+
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "serial_number": "SN-EXP-F1",
+            "patrimony_number": "PAT-EXP-F1",
             "description": "Notebook Alfa",
-            "equipment_type": "Notebook",
-            "location": "TI",
+            "brand": "Dell",
+            "model": "Notebook Alfa",
+            "category_id": cat_exp["id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "serial_number": "SN-EXP-F2",
+            "patrimony_number": "PAT-EXP-F2",
             "description": "Desktop Beta",
-            "equipment_type": "Desktop",
-            "location": "TI",
+            "brand": "HP",
+            "model": "Desktop Beta",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
 
-    response = await client.get("/api/v1/equipments/export?type=Notebook")
+    response = await client.get(f"/api/v1/assets/export?category_id={cat_exp['id']}")
     assert response.status_code == 200
     wb = openpyxl.load_workbook(io.BytesIO(response.content))
-    ws = wb["Patrimônio"]
-    # Cabeçalho na linha 1 + 1 registro de Notebook = 2 linhas
+    ws = wb["Ativos Patrimoniais"]
     assert ws.max_row == 2
-    assert ws.cell(row=2, column=1).value == "Notebook"
+    assert ws.cell(row=2, column=1).value == "Notebook Export"
 
 
 # ==============================================================================
@@ -819,20 +986,22 @@ async def test_tier1_dashboard_metrics_tecnico(client: AsyncClient, tecnico_toke
     response = await client.get("/api/v1/dashboard/metrics")
     assert response.status_code == 200
     data = response.json()
-    assert "equipments_total" in data
-    assert data["equipments_total"] is not None
-    assert "tickets_pending" in data
-    assert "tickets_in_progress" in data
+    assert "assets_total" in data
+    assert data["assets_total"] is not None
+    assert "assets_in_use" in data
+    assert "assets_in_maintenance" in data
+    assert "assets_available" in data
+    assert "assets_decommissioned" in data
 
 
 @pytest.mark.anyio
 async def test_tier1_dashboard_metrics_colaborador(client: AsyncClient, colaborador_tokens):
-    """Testa retorno de métricas do dashboard restrito para role colaborador."""
+    """Testa retorno de métricas do dashboard para role colaborador."""
     client.cookies.set("access_token", colaborador_tokens["access_token"])
     response = await client.get("/api/v1/dashboard/metrics")
     assert response.status_code == 200
     data = response.json()
-    assert data["equipments_total"] is None  # Visão restrita, sem total de equipamentos
+    assert "assets_total" in data
 
 
 @pytest.mark.anyio
@@ -847,18 +1016,18 @@ async def test_tier1_equipment_autocomplete_suggestions(client: AsyncClient, tec
     """Testa endpoint de sugestões de autocompletar para prefixos válidos."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
             "patrimony_number": "PAT-SUGG-100",
             "description": "Equipamento Sugg",
-            "equipment_type": "Monitor",
-            "location": "TI",
+            "brand": "LG",
+            "model": "Equipamento Sugg",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
 
-    response = await client.get(
-        "/api/v1/equipments/suggestions?field=patrimony_number&prefix=PAT-S"
-    )
+    response = await client.get("/api/v1/assets/suggestions?field=patrimony_number&prefix=PAT-S")
     assert response.status_code == 200
     suggestions = response.json()
     assert "PAT-SUGG-100" in suggestions
@@ -866,28 +1035,30 @@ async def test_tier1_equipment_autocomplete_suggestions(client: AsyncClient, tec
 
 @pytest.mark.anyio
 async def test_tier1_dashboard_equipment_count_reflects_db(client: AsyncClient, tecnico_tokens):
-    """Testa que o contador do dashboard reflete exatamente a quantidade de equipamentos."""
+    """Testa que o contador do dashboard reflete exatamente a quantidade de ativos."""
     client.cookies.set("access_token", tecnico_tokens["access_token"])
-    initial_count = (await client.get("/api/v1/dashboard/metrics")).json()["equipments_total"]
+    initial_count = (await client.get("/api/v1/dashboard/metrics")).json()["assets_total"]
 
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-DASH-1",
+            "patrimony_number": "PAT-DASH-1",
             "description": "Item 1",
-            "equipment_type": "TI",
-            "location": "TI",
+            "brand": "Dell",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
     await client.post(
-        "/api/v1/equipments",
+        "/api/v1/assets",
         json={
-            "serial_number": "SN-DASH-2",
+            "patrimony_number": "PAT-DASH-2",
             "description": "Item 2",
-            "equipment_type": "TI",
-            "location": "TI",
+            "brand": "Dell",
+            "category_id": tecnico_tokens["category_id"],
+            "location_id": tecnico_tokens["location_id"],
         },
     )
 
-    new_count = (await client.get("/api/v1/dashboard/metrics")).json()["equipments_total"]
+    new_count = (await client.get("/api/v1/dashboard/metrics")).json()["assets_total"]
     assert new_count == initial_count + 2

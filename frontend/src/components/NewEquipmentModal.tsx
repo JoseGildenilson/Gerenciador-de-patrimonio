@@ -105,8 +105,10 @@ export const NewEquipmentModal: React.FC<NewEquipmentModalProps> = ({ isOpen, on
         brand: brand.trim() || null,
         model: productNumber.trim() || null,
         product_number: productNumber.trim() || null,
+        category_id: typeMatch?.id || 1,
         equipment_type: equipmentType,
         equipment_type_id: typeMatch?.id || 1,
+        location_id: locMatch?.id || 1,
         location: location,
         sector_id: locMatch?.id || 1,
         status: status,
@@ -114,6 +116,11 @@ export const NewEquipmentModal: React.FC<NewEquipmentModalProps> = ({ isOpen, on
         windows_product_key: windowsKey.trim() || null,
         windows_key: windowsKey.trim() || null,
         notes: notes.trim() || null,
+        specs: {
+          ...(hostname.trim() ? { hostname: hostname.trim() } : {}),
+          ...(windowsKey.trim() ? { windows_key: windowsKey.trim() } : {}),
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+        },
       };
 
       await equipmentApi.createEquipment(payload);

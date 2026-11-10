@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from src.api.dependencies import get_current_user, require_tecnico_or_admin
 from src.core.database import get_db
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BusinessRuleError, NotFoundError
 from src.domain.models import User
 from src.domain.schemas import (
     AssetMovementCreate,
     AssetMovementResponse,
     AssetMaintenanceCreate,
+    AssetMaintenanceUpdate,
     AssetMaintenanceResponse,
 )
 from src.use_cases.movement_use_cases import AssetMovementUseCases
@@ -49,6 +50,8 @@ def create_asset_movement(
         return use_case.create_movement(id, data, current_user.id)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post(
@@ -97,5 +100,44 @@ def create_asset_maintenance(
     use_case = MaintenanceUseCases(db)
     try:
         return use_case.create_maintenance(id, data, current_user.id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.put(
+    "/api/v1/assets/{id}/maintenances/{maintenance_id}",
+    response_model=AssetMaintenanceResponse,
+)
+def update_asset_maintenance(
+    id: int,
+    maintenance_id: int,
+    data: AssetMaintenanceUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_tecnico_or_admin),
+):
+    """Atualiza um registro de manutenção existente de um ativo."""
+    use_case = MaintenanceUseCases(db)
+    try:
+        return use_case.update_maintenance(id, maintenance_id, data)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.delete(
+    "/api/v1/assets/{id}/maintenances/{maintenance_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_asset_maintenance(
+    id: int,
+    maintenance_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_tecnico_or_admin),
+):
+    """Exclui um registro de manutenção de um ativo."""
+    use_case = MaintenanceUseCases(db)
+    try:
+        use_case.delete_maintenance(id, maintenance_id)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

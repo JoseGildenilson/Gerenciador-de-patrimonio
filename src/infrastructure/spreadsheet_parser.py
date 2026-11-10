@@ -32,6 +32,9 @@ class ParsedSpreadsheetRow:
     last_maintenance_at: datetime | None = None
     hist_mov: str | None = None
     notes: str | None = None
+    purchase_cost: str | None = None
+    purchase_date: datetime | None = None
+    specs_raw: str | None = None
 
 
 @dataclass
@@ -113,6 +116,9 @@ def _map_headers(raw_headers: list[Any]) -> dict[str, int]:
         ],
         "hostname": ["hostname", "host", "nomered"],
         "notes": ["observacoes", "observacao", "obs", "comentarios", "notas"],
+        "purchase_cost": ["custoaquisicao", "valoraquisicao", "custo", "preco"],
+        "purchase_date": ["dataaquisicao", "datacompra"],
+        "specs_raw": ["especificacoes", "specs"],
     }
 
     for idx, raw_h in enumerate(raw_headers):
@@ -247,6 +253,9 @@ def _parse_excel(file_bytes: bytes, filename: str) -> ParsedSpreadsheet:
         last_maint = _parse_datetime(get_val("last_maintenance_at"))
         hist_mov = _clean_str(get_val("hist_mov"))
         notes = _clean_str(get_val("notes"))
+        p_cost = _clean_str(get_val("purchase_cost"))
+        p_date = _parse_datetime(get_val("purchase_date"))
+        specs_raw = _clean_str(get_val("specs_raw"))
 
         parsed_rows.append(
             ParsedSpreadsheetRow(
@@ -268,6 +277,9 @@ def _parse_excel(file_bytes: bytes, filename: str) -> ParsedSpreadsheet:
                 last_maintenance_at=last_maint,
                 hist_mov=hist_mov,
                 notes=notes,
+                purchase_cost=p_cost,
+                purchase_date=p_date,
+                specs_raw=specs_raw,
             )
         )
 
@@ -336,6 +348,9 @@ def _parse_csv(file_bytes: bytes, filename: str) -> ParsedSpreadsheet:
         last_maint = _parse_datetime(get_val("last_maintenance_at"))
         hist_mov = _clean_str(get_val("hist_mov"))
         notes = _clean_str(get_val("notes"))
+        p_cost = _clean_str(get_val("purchase_cost"))
+        p_date = _parse_datetime(get_val("purchase_date"))
+        specs_raw = _clean_str(get_val("specs_raw"))
 
         parsed_rows.append(
             ParsedSpreadsheetRow(
@@ -357,6 +372,9 @@ def _parse_csv(file_bytes: bytes, filename: str) -> ParsedSpreadsheet:
                 last_maintenance_at=last_maint,
                 hist_mov=hist_mov,
                 notes=notes,
+                purchase_cost=p_cost,
+                purchase_date=p_date,
+                specs_raw=specs_raw,
             )
         )
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from src.core.exceptions import NotFoundError
+from src.core.exceptions import BusinessRuleError, NotFoundError
 from src.domain.models import AssetMovement
 from src.domain.schemas import AssetMovementCreate, AssetMovementResponse
 from src.infrastructure.repositories import (
@@ -39,6 +39,11 @@ class AssetMovementUseCases:
         if not asset:
             raise NotFoundError(f"Ativo com ID {asset_id} não encontrado.")
 
+        if asset.status == "baixado":
+            raise BusinessRuleError(
+                "Ativo com status 'baixado' não pode sofrer movimentações sem restauração prévia."
+            )
+
         # Validar origem
         origin_loc = self.location_repo.get_by_id(data.origin_location_id)
         if not origin_loc:
@@ -67,6 +72,10 @@ class AssetMovementUseCases:
             to_u = self.user_repo.get_by_id(data.to_user_id)
             if not to_u:
                 raise NotFoundError(f"Usuário de destino com ID {data.to_user_id} não encontrado.")
+            if not to_u.is_active:
+                raise BusinessRuleError(
+                    "Usuário de destino está inativo e não pode receber custódia de ativos."
+                )
             asset.assigned_user_id = data.to_user_id
         elif data.dest_location_id is None:
             # Baixa do bem remove custodiante

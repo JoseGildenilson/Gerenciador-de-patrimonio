@@ -18,7 +18,16 @@ async def test_app_lifespan():
 
 @pytest.mark.anyio
 async def test_health_check_endpoint(client: AsyncClient):
-    """Testa o endpoint de verificação de saúde da aplicação."""
+    """Testa o endpoint de verificação de saúde da aplicação e filtro de logs."""
+    from logging import LogRecord
+    from src.main import HealthCheckFilter
+
+    h_filter = HealthCheckFilter()
+    rec_health = LogRecord("uvicorn.access", 20, "", 0, "GET /health HTTP/1.1 200", (), None)
+    rec_assets = LogRecord("uvicorn.access", 20, "", 0, "GET /api/v1/assets HTTP/1.1 200", (), None)
+    assert h_filter.filter(rec_health) is False
+    assert h_filter.filter(rec_assets) is True
+
     response = await client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"

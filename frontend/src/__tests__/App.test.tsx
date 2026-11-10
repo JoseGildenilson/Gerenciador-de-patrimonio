@@ -88,6 +88,30 @@ describe('Componente Raiz App & Proteção de Rotas', () => {
       expect(screen.getByText('Gestão de Patrimônio')).toBeInTheDocument();
     });
   });
+
+  it('Permite acesso de administrador às rotas restritas (RBAC administrador)', async () => {
+    (authApi.getMe as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1,
+      name: 'Admin Sistema',
+      email: 'admin@sispatrimonio.edu.br',
+      role: 'administrador',
+      is_active: true,
+    });
+    (dashboardApi.getMetrics as ReturnType<typeof vi.fn>).mockResolvedValue({
+      assets_total: 10,
+      assets_in_use: 6,
+      assets_in_maintenance: 1,
+      assets_available: 2,
+      assets_decommissioned: 1,
+    });
+
+    window.history.pushState({}, '', '/importar');
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Importação de Planilha')).toBeInTheDocument();
+    });
+  });
 });
 
 

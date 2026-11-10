@@ -30,22 +30,25 @@ class LocationUseCases:
 
     def create_location(self, data: LocationCreate) -> LocationResponse:
         """Cadastra nova localização garantindo unicidade do espaço físico."""
+        clean_room = (
+            data.room_number.strip() if data.room_number and data.room_number.strip() else None
+        )
         existing = self.repo.get_by_physical_space(
             building=data.building,
             floor=data.floor,
             sector=data.sector,
-            room_number=data.room_number,
+            room_number=clean_room,
         )
         if existing:
             raise ConflictError(
-                f"Espaço físico já cadastrado: prédio '{data.building}', andar '{data.floor}', setor '{data.sector}', sala '{data.room_number}'."
+                f"Espaço físico já cadastrado: prédio '{data.building}', andar '{data.floor}', setor '{data.sector}', sala '{clean_room}'."
             )
 
         location = Location(
             building=data.building.strip(),
             floor=data.floor.strip(),
             sector=data.sector.strip(),
-            room_number=data.room_number.strip() if data.room_number else None,
+            room_number=clean_room,
             description=data.description.strip() if data.description else None,
         )
         self.repo.create(location)
@@ -66,7 +69,12 @@ class LocationUseCases:
         new_b = data.building.strip() if data.building is not None else location.building
         new_f = data.floor.strip() if data.floor is not None else location.floor
         new_s = data.sector.strip() if data.sector is not None else location.sector
-        new_r = data.room_number.strip() if data.room_number is not None else location.room_number
+        if "room_number" in data.model_fields_set:
+            new_r = (
+                data.room_number.strip() if data.room_number and data.room_number.strip() else None
+            )
+        else:
+            new_r = location.room_number
 
         existing = self.repo.get_by_physical_space(
             building=new_b,
@@ -82,14 +90,32 @@ class LocationUseCases:
         location.building = new_b
         location.floor = new_f
         location.sector = new_s
-        location.room_number = new_r if new_r else None
+        location.room_number = new_r
         if data.description is not None:
-            location.description = data.description.strip() if data.description else None
+            location.description = data.description.strip() or None
 
         try:
             self.db.commit()
             self.db.refresh(location)
             return LocationResponse.model_validate(location)
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def delete_location(self, location_id: int) -> None:
+        """Exclui uma localização se não houver ativos ou movimentações vinculadas (ON DELETE RESTRICT)."""
+        location = self.repo.get_by_id(location_id)
+        if not location:
+            raise NotFoundError(f"Localização com ID {location_id} não encontrada.")
+
+        if self.repo.has_dependencies(location_id):
+            raise ConflictError(
+                "Não é possível excluir a localização pois existem ativos ou movimentações vinculadas."
+            )
+
+        self.repo.delete(location)
+        try:
+            self.db.commit()
         except Exception:
             self.db.rollback()
             raise

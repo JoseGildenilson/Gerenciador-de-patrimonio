@@ -140,6 +140,13 @@ Disponibilizamos **duas formas independentes** para criar a estrutura e carregar
 
 ### Método 1: Comandos Automatizados via CLI (Recomendado)
 
+> [!IMPORTANT]
+> **Pré-requisito:** O banco PostgreSQL precisa estar em execução antes de rodar os comandos. Se não possuir o PostgreSQL instalado localmente, inicie o container com:
+> ```bash
+> docker compose up -d postgres
+> ```
+> *(Ou configure `DATABASE_URL=sqlite:///./patrimonio.db` no `.env` para testes locais rápidos)*
+
 Utilizando o gerenciador de pacotes [`uv`](https://github.com/astral-sh/uv), execute na raiz do projeto:
 
 ```bash
@@ -236,16 +243,19 @@ cp .env.example .env
 
 #### 2. Configurar e Iniciar o Backend (FastAPI)
 ```bash
-# 1. Instala dependências do Python no ambiente virtual isolado com uv
+# 1. Inicie o PostgreSQL via Docker (caso use Postgres)
+docker compose up -d postgres
+
+# 2. Instala dependências do Python no ambiente virtual isolado com uv
 uv sync --all-extras
 
-# 2. Cria as tabelas e tipos no banco de dados
+# 3. Cria as tabelas e tipos no banco de dados
 uv run db-create
 
-# 3. Popula o banco com os dados de exemplo
+# 4. Popula o banco com os dados de exemplo
 uv run db-seed
 
-# 4. Inicia o servidor backend com recarregamento automático
+# 5. Inicia o servidor backend com recarregamento automático
 uv run uvicorn src.main:app --reload --port 8000
 ```
 O Backend estará acessível em:
@@ -275,8 +285,29 @@ Ao executar o comando de povoamento (`db-seed` ou `populate.sql`), as seguintes 
 | Papel | E-mail | Senha | Permissões |
 |---|---|---|---|
 | **Administrador** | `admin@sispatrimonio.edu.br` | `senha123` | Acesso pleno ao sistema, gerenciamento de usuários, categorias e auditoria contábil. |
-| **Técnico de TI** | `tecnico@empresa.com` | `senha123` | Cadastro e edição de ativos, movimentações físicas, renumeração de placas e manutenções técnicas. |
-| **Colaborador** | `colaborador@empresa.com` | `senha123` | Consulta dos ativos sob sua custódia e confirmação de aceite de termos de responsabilidade. |
+| **Técnico de TI** | `tecnico@sispatrimonio.edu.br` | `senha123` | Cadastro e edição de ativos, movimentações físicas, renumeração de placas e manutenções técnicas. |
+| **Colaborador** | `colaborador@sispatrimonio.edu.br` | `senha123` | Consulta dos ativos sob sua custódia e confirmação de aceite de termos de responsabilidade. |
+
+---
+
+## 🔍 Observabilidade & Visualização de Operações SQL em Tempo Real
+
+Para apresentação e avaliação na disciplina de **Banco de Dados**, o sistema possui um mecanismo nativo de logging de queries em tempo real no backend:
+
+- **Correlação Direta:** A cada requisição na API ou navegação no Frontend (ex.: listar patrimônios, cadastrar ativo, movimentar bem), o terminal do backend exibe imediatamente o comando SQL executado e o tempo de resposta:
+  ```text
+  [SQL QUERY] (1.12ms) SQL: SELECT assets.id, assets.patrimony_number, assets.description FROM assets WHERE assets.deleted_at IS NULL | PARAMS: {}
+  ```
+- **Zero Poluição:** Consultas de verificação periódica de saúde (*healthchecks* `SELECT 1`) são filtradas, mantendo o console limpo e focado nas operações do usuário.
+- **Segurança de Credenciais:** Hashes de senhas e dados confidenciais são automaticamente mascarados como `[REDACTED]`.
+- **Controle por Variável de Ambiente:** Ativado por padrão em desenvolvimento. Pode ser configurado via `.env` ou linha de comando:
+  ```bash
+  LOG_SQL_STATEMENTS=true uv run uvicorn src.main:app --port 8000
+  ```
+  Para visualizar em tempo real no Docker:
+  ```bash
+  docker logs -f patrimonio_backend
+  ```
 
 ---
 
@@ -385,4 +416,4 @@ uv run db-seed
 
 ## 📄 Licença
 
-Projeto desenvolvido para fins corporativos e avaliação na disciplina de Banco de Dados. Distribuído sob a licença MIT.
+Projeto desenvolvido para a disciplina de Banco de Dados. Distribuído sob a licença MIT.

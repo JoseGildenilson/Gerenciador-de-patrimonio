@@ -92,9 +92,20 @@ export const EquipmentListPage: React.FC = () => {
   const fetchEquipments = async () => {
     setLoading(true);
     try {
+      const matchedCategory =
+        filterTypes.length > 0
+          ? types.find((t) => t.name === filterTypes[0])?.id
+          : undefined;
+      const matchedLocation =
+        filterLocations.length > 0
+          ? locations.find((l) => l.name === filterLocations[0])?.id
+          : undefined;
+
       const params: EquipmentFilterParams = {
         page,
         limit: 25,
+        category_id: matchedCategory,
+        location_id: matchedLocation,
         type: filterTypes.length > 0 ? filterTypes : undefined,
         location: filterLocations.length > 0 ? filterLocations : undefined,
         status: filterStatuses.length > 0 ? filterStatuses : undefined,
@@ -500,7 +511,7 @@ export const EquipmentListPage: React.FC = () => {
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 text-gray-300 font-mono">
                         {typeof item.equipment_type === 'object' && item.equipment_type !== null
                           ? (item.equipment_type as any).name
-                          : item.equipment_type}
+                          : item.equipment_type || item.category?.name}
                       </span>
                     </div>
 
@@ -517,10 +528,17 @@ export const EquipmentListPage: React.FC = () => {
                           {typeof (item as any).sector === 'object' && (item as any).sector !== null
                             ? (item as any).sector.name
                             : typeof item.location === 'object' && item.location !== null
-                            ? (item.location as any).name
+                            ? (item.location as any).name || (item.location as any).sector
                             : item.location || (item as any).sector || 'Não definido'}
                         </span>
                       </span>
+
+                      {item.assigned_user?.name && (
+                        <>
+                          <span className="text-[#333333]">•</span>
+                          <span>Custodiante: <span className="text-white font-medium">{item.assigned_user.name}</span></span>
+                        </>
+                      )}
 
                       {item.patrimony_number && (
                         <>

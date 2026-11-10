@@ -157,7 +157,7 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 
 ---
 
-## Phase 8: Correções, Conformidade Constitucional e Quality Gate 100%
+## Phase 8B: Correções, Conformidade Constitucional e Quality Gate 100%
 
 **Purpose**: Resolver pendências identificadas pela auditoria de testes (violações constitucionais, bug de Docker prod, lint no backend e cobertura 100% no frontend)
 
@@ -176,6 +176,21 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 
 ---
 
+## Phase 9: User Story 6 - Observabilidade e Logs Descritivos de Banco de Dados (Priority: P2 - FR-012, SC-006)
+
+**Goal**: Permitir visualização limpa de queries SQL no terminal (SELECT ao listar, INSERT ao cadastrar, UPDATE/DELETE em alterações) com parâmetros legíveis, tempo em ms e higienização de senhas (`[REDACTED]`), filtrando consultas automáticas de healthcheck (`SELECT 1`).
+
+**Independent Test**: Executar uma requisição de listagem e outra de cadastro e verificar no terminal a emissão de `[SQL QUERY]` com parâmetros formatados e duração em ms, sem ocorrência de `SELECT 1` e com dados sensíveis mascarados.
+
+### Implementation for User Story 6
+
+- [x] T070 [P] [US6] Add LOG_SQL_STATEMENTS configuration flag in `src/core/config.py` with default true in development and false in production
+- [x] T071 [US6] Implement SQLAlchemy `before_cursor_execute` and `after_cursor_execute` event listeners in `src/core/database.py` with `SELECT 1` filtering, elapsed time in ms, and sensitive parameter sanitization (`[REDACTED]`)
+- [x] T072 [P] [US6] Implement unit tests for SQL statement logging, timer calculation, healthcheck filtering, and password redaction in `tests/test_database.py`
+- [x] T073 [US6] Validate SQL query logging during HTTP endpoint requests (listing, creation) in `tests/test_database.py` with `LOG_SQL_STATEMENTS` enabled
+- [x] T074 [P] [US6] Update documentation in `README.md` and `specs/001-gerenciamento-patrimonio/quickstart.md` with instructions for observing database logs during professor demonstration
+- [x] T075 [US6] Verify complete test suite coverage with `PYTHONPATH=. uv run pytest --cov=src --cov-branch --cov-fail-under=100` and code formatting with `uv run ruff check .`
+
 ---
 
 ## Dependencies & Execution Order
@@ -187,7 +202,12 @@ description: "Lista de tarefas de implementação para o Modelo de Banco de Dado
 - **User Story 2 (Phase 4)**: Depende de Foundational (Phase 2). Pode executar em paralelo ou após US1.
 - **User Story 3 (Phase 5)**: Depende de US1 e US2 (necessita de `assets` e `locations`).
 - **User Story 4 (Phase 6)**: Depende de US1 (necessita de `assets`).
-- **Polish (Phase 7)**: Depende da conclusão de todas as histórias desejadas.
+- **User Story 5 (Phase 8)**: Comandos CLI e scripts SQL nativos.
+- **User Story 6 (Phase 9)**: Depende de `src/core/database.py` e `src/core/config.py`.
+- **Phase 10 (Convergence)**: Ajustes de prontidão SQLAlchemy Core, credenciais e regras de baixa.
+- **Phase 11 (Foundational Schema & Stub Cleanup)**: Paridade estrita entre Alembic, `models.py` e `database/schema.sql` — **BLOQUEIA** a Phase 12 (User Story 7).
+- **User Story 7 (Phase 12)**: Depende da Phase 11; integra Contratos Backend enriquecidos, RBAC `administrador` e migração completa do Frontend React para as 7 tabelas canônicas.
+- **Phase 13 (Polish, E2E & Docker)**: Depende da conclusão da Phase 12 (User Story 7).
 
 ### Parallel Execution Examples
 
@@ -223,3 +243,73 @@ T011: "Asset model in src/domain/models.py"
 4. User Story 3 (Movimentações e Termo) integrada.
 5. User Story 4 (Renumeração e Manutenções) integrada.
 6. Phase 7 (Polish, CI 100% coverage e Quickstart) validado.
+
+
+---
+
+## Phase 10: Convergence
+
+- [x] T076 CRITICAL: Replace raw SQL `text()` calls in `src/infrastructure/db_readiness.py` with SQLAlchemy 2.0 Core `select(1)` and `postgresql.ENUM(...).create(checkfirst=True)` and update `tests/test_db_readiness.py` per Constitution III (contradicts)
+- [x] T077 Align default test user credentials in `README.md` and placeholder in `frontend/src/components/LoginForm.tsx` with the canonical `@sispatrimonio.edu.br` accounts seeded by `db-seed` per FR-010, US5/AC2, T057 (contradicts)
+- [x] T078 Replace truncated Argon2 password hashes in `database/populate.sql` with a valid Argon2id hash for `'senha123'` and include canonical user emails (`admin`, `tecnico`, `colaborador`) per FR-011, US5/AC3, T052 (contradicts)
+- [x] T079 Enforce `requires_serial_number` validation during asset updates in `src/use_cases/asset_use_cases.py` and add unit/API test coverage in `tests/test_asset_api.py` per FR-005 (partial)
+- [x] T080 Block movements and new maintenances on decommissioned (`'baixado'`) assets in `src/use_cases/movement_use_cases.py` and `src/use_cases/maintenance_use_cases.py` with corresponding tests per spec: Edge Case 3 (missing)
+- [x] T081 Synchronize `src/infrastructure/seed.py` dataset with `database/populate.sql` and ensure PostgreSQL enum lifecycle in `alembic/versions/d4e5f6a7b8c9_evolve_to_sispatrimonio_model.py` per FR-001, SC-001, US5/AC2 (partial)
+
+---
+
+## Phase 11: Foundational — Paridade Estrita de Banco/Alembic/ORM e Limpeza de Stubs (Blocking Prerequisites - FR-013)
+
+**Purpose**: Garantir que `alembic/versions/`, `src/domain/models.py` e `database/schema.sql` possuam exatamente os mesmos tipos ENUM nas colunas, restrições `ON DELETE`, `NULLS NOT DISTINCT`, `CheckConstraint`s e `Index`es, além de remover módulos órfãos de 1 linha antes da integração full-stack.
+
+**⚠️ CRITICAL**: Bloqueia a execução da User Story 7 (Phase 12).
+
+- [x] T082 Align ORM models in `src/domain/models.py` with `database/schema.sql` enforcing `ondelete="RESTRICT"` (`assets.category_id`, `assets.location_id`, `patrimony_history.changed_by_id`, `asset_movements.origin_location_id`, `asset_movements.dest_location_id`, `asset_movements.moved_by_id`, `asset_maintenances.registered_by_id`), `ondelete="SET NULL"` (`assets.assigned_user_id`, `asset_movements.from_user_id`, `asset_movements.to_user_id`), `ondelete="CASCADE"` (`patrimony_history.asset_id`, `asset_movements.asset_id`, `asset_maintenances.asset_id`), `postgresql_nulls_not_distinct=True` on `uq_locations_physical_space`, 4 `CheckConstraint`s (`useful_life_months > 0`, `residual_value_rate >= 0.00 AND residual_value_rate <= 100.00`, `purchase_cost >= 0.00`, `cost >= 0.00`), and 7 performance `Index`es (`idx_assets_category_id`, `idx_assets_location_id`, `idx_assets_assigned_user_id`, `idx_assets_status`, `idx_asset_movements_asset_id`, `idx_asset_maintenances_asset_id`, `idx_patrimony_history_asset_id`)
+- [x] T083 Update Alembic migrations in `alembic/versions/d4e5f6a7b8c9_evolve_to_sispatrimonio_model.py` and `alembic/versions/e5f6a7b8c9d0_purge_legacy_database_tables.py` so `users.role` uses native ENUM `user_role` (default `'colaborador'`), `assets.status` uses `asset_status` (default `'disponivel'`), `asset_maintenances.maintenance_type` uses `maintenance_type`, `uq_locations_physical_space` includes `postgresql_nulls_not_distinct=True`, all `ON DELETE` rules, 4 `CheckConstraint`s and 7 `Index`es are applied, and orphan PL/pgSQL function `set_updated_at()` is dropped
+- [x] T084 [P] Delete obsolete 1-line stub modules `src/api/equipment_routes.py`, `src/api/catalog_routes.py`, `src/use_cases/equipment_use_cases.py` and obsolete 1-line test files `tests/test_equipment_api.py`, `tests/test_equipment_models.py`, `tests/test_equipment_repositories.py`, `tests/test_equipment_schemas.py`, `tests/test_equipment_use_cases.py`, `tests/test_tags_and_coverage.py`
+- [x] T085 Add schema parity and constraint verification tests in `tests/test_migrations.py` and `tests/test_asset_models.py` confirming native ENUM columns, `ON DELETE` behaviors, `CheckConstraint`s, and `uq_locations_physical_space` (`NULLS NOT DISTINCT`)
+
+**Checkpoint**: Esquema relacional 100% convergente entre Alembic, SQLAlchemy ORM e `database/schema.sql`.
+
+---
+
+## Phase 12: User Story 7 - Integração Ponta a Ponta do Frontend React e Contratos de API com o Modelo Canônico (Priority: P1 - FR-014, FR-015, FR-016, FR-017, SC-007)
+
+**Goal**: Conectar integralmente o Frontend React e o Backend FastAPI às 7 tabelas e 3 enums do SisPatrimonio, expondo rotas de exportação, usuários ativos, sugestões e exclusão protegida de catálogos, enriquecendo DTOs de resposta e habilitando o perfil `administrador` em todo o sistema.
+
+**Independent Test**: Autenticar como `administrador` e `tecnico`, carregar métricas reais no Dashboard, listar/filtrar/exportar ativos, criar/editar/excluir categorias e localizações físicas, cadastrar/editar ativos com JSONB `specs`, renumerar patrimônio com histórico, movimentar ativo com aceite de termo e registrar/editar/excluir manutenção sem nenhum erro 404, 403 ou 500.
+
+### Backend Contracts, Use Cases & Tests for User Story 7
+
+- [x] T086 [P] [US7] Enforce `AssetStatus` (`'disponivel'`, `'em_uso'`, `'em_manutencao'`, `'baixado'`) and `MaintenanceTypeEnum` (`'preventiva'`, `'corretiva'`) in `AssetCreate`, `AssetUpdate`, `AssetMaintenanceCreate`, and `AssetMaintenanceUpdate`, and add `UserSummaryResponse`, enriched `AssetResponse` (`category`, `location`, `assigned_user`, `last_maintenance_at`), and enriched `AssetDetailResponse` (`movements`, `maintenances`, `patrimony_history`) in `src/domain/schemas.py`
+- [x] T087 [US7] Update `AssetRepository`, `CategoryRepository`, `LocationRepository`, `UserRepository`, `AssetMovementRepository`, and `AssetMaintenanceRepository` in `src/infrastructure/repositories.py` to eager-load relationships (`category`, `location`, `assigned_user`), compute `last_maintenance_at`, list active users (`is_active == True`, `deleted_at IS NULL`), query distinct field suggestions, and support maintenance update/delete without `commit()`/`rollback()`
+- [x] T088 [US7] Update `AssetUseCases` in `src/use_cases/asset_use_cases.py` to validate `user.is_active == True` and `user.deleted_at is None` when assigning `assigned_user_id`, use `data.model_fields_set` in `update_asset` to allow clearing nullable fields (`assigned_user_id`, `model`, `purchase_cost`, `purchase_date`, `serial_number`), and implement `export_assets` and `get_asset_suggestions`
+- [x] T089 [P] [US7] Update `CategoryUseCases` in `src/use_cases/category_use_cases.py` and `LocationUseCases` in `src/use_cases/location_use_cases.py` to implement `delete_category` and `delete_location` (raising HTTP 409 `ConflictError` when linked assets or movements exist per `ON DELETE RESTRICT`) and enforce duplicate check on `(building, floor, sector, room_number)` when `room_number IS NULL`
+- [x] T090 [P] [US7] Update `AssetMovementUseCases` in `src/use_cases/movement_use_cases.py` to reject inactive `to_user_id` (`is_active == False`) and update `MaintenanceUseCases` in `src/use_cases/maintenance_use_cases.py` to implement `update_maintenance` and `delete_maintenance` (validating `cost >= 0.00` and `maintenance_type` enum)
+- [x] T091 [P] [US7] Update `src/infrastructure/spreadsheet_parser.py` and `src/use_cases/import_spreadsheet_use_cases.py` to parse `CUSTO AQUISIÇÃO` (`purchase_cost >= 0.00`), `DATA AQUISIÇÃO` (`purchase_date`), and `ESPECIFICAÇÕES` (`specs` JSONB) and enforce `category.requires_serial_number == True` validation during spreadsheet import
+- [x] T092 [US7] Expose `GET /api/v1/assets/export` and `GET /api/v1/assets/suggestions` in `src/api/asset_routes.py`, `GET /api/v1/users` in `src/api/routes.py`, `DELETE /api/v1/categories/{category_id}` in `src/api/category_routes.py`, `DELETE /api/v1/locations/{location_id}` in `src/api/location_routes.py`, `PUT` and `DELETE /api/v1/assets/{asset_id}/maintenances/{maintenance_id}` in `src/api/movement_routes.py`, and replace `require_tecnico_role` with `require_tecnico_or_admin` in `src/api/import_routes.py`
+- [x] T093 [US7] Add unit and integration tests in `tests/test_asset_api.py`, `tests/test_location_api.py`, `tests/test_movement_api.py`, `tests/test_maintenance_api.py`, `tests/test_import_routes.py`, and `tests/test_spreadsheet_parser.py` achieving 100% line and branch coverage for all new endpoints and validations
+
+### Frontend React Implementation & Tests for User Story 7
+
+- [x] T094 [P] [US7] Update TypeScript interfaces in `frontend/src/types/auth.ts` (`UserRole = 'administrador' | 'tecnico' | 'colaborador'`, `name: string`), `frontend/src/types/dashboard.ts` (`DashboardMetrics` matching `/api/v1/dashboard/metrics`), and `frontend/src/types/equipment.ts` (`Asset`, `Category`, `Location`, `UserSummary`, `PatrimonyHistory`, `AssetMovement`, `AssetMaintenance`)
+- [x] T095 [US7] Refactor HTTP clients in `frontend/src/api/equipmentApi.ts` and `frontend/src/api/dashboardApi.ts` to consume `/api/v1/assets`, `/api/v1/assets/export`, `/api/v1/assets/suggestions`, `/api/v1/categories`, `/api/v1/locations`, `/api/v1/movements`, `/api/v1/users`, and `/api/v1/dashboard/metrics`
+- [x] T096 [P] [US7] Update RBAC guards in `frontend/src/App.tsx`, `frontend/src/components/SideMenu.tsx`, and `frontend/src/pages/DashboardPage.tsx` to authorize `administrador` alongside `tecnico`, and connect `frontend/src/pages/DashboardPage.tsx` to `dashboardApi.getMetrics()` displaying `assets_total`, `assets_in_use`, `assets_in_maintenance`, `assets_available`, and `assets_decommissioned`
+- [x] T097 [US7] Refactor `frontend/src/pages/EquipmentListPage.tsx` to load categories (`/api/v1/categories`), locations (`/api/v1/locations`), and `asset_status` enum options (`disponivel`, `em_uso`, `em_manutencao`, `baixado`), filter via `GET /api/v1/assets`, render category/location/custodian names on cards, and download `.xlsx` via `GET /api/v1/assets/export`
+- [x] T098 [P] [US7] Refactor `frontend/src/components/NewEquipmentModal.tsx` to create assets via `POST /api/v1/assets` with required `patrimony_number` and `brand`, conditional `serial_number` based on `category.requires_serial_number`, `category_id`, `location_id`, `assigned_user_id`, `purchase_cost`, `purchase_date`, `status` enum, and `specs` JSONB fields
+- [x] T099 [P] [US7] Refactor `frontend/src/components/ManageTagsModal.tsx` to manage Categories (`/api/v1/categories`: `name`, `useful_life_months`, `residual_value_rate`, `requires_serial_number`) and Physical Locations (`/api/v1/locations`: `building`, `floor`, `sector`, `room_number`, `description`) with create, edit, and delete support
+- [x] T100 [US7] Refactor `frontend/src/pages/EquipmentDetailPage.tsx` to view/edit canonical `Asset` fields and `specs` JSONB, execute atomic patrimony renumbering (`POST /api/v1/assets/{id}/renumber`) displaying `patrimony_history`, and accept custody terms (`POST /api/v1/movements/{movement_id}/accept-term`)
+- [x] T101 [P] [US7] Refactor `frontend/src/components/MovementModal.tsx`, `frontend/src/components/MaintenanceModal.tsx`, and `frontend/src/components/EditMaintenanceModal.tsx` for the canonical schemas (`origin_location_id`, nullable `dest_location_id` for decommission, `from_user_id`, `to_user_id`, `maintenance_type` `'preventiva' | 'corretiva'`, `service_provider`, `description`, `cost`, `maintenance_date`)
+- [x] T102 [US7] Update Frontend test suites in `frontend/src/__tests__/EquipmentPage.test.tsx`, `frontend/src/__tests__/EquipmentDetailPage.test.tsx`, `frontend/src/__tests__/DashboardPage.test.tsx`, `frontend/src/__tests__/ImportPage.test.tsx`, and `frontend/src/__tests__/App.test.tsx` to validate the new `/api/v1/assets`, `/api/v1/categories`, `/api/v1/locations`, and `administrador` flows
+
+**Checkpoint**: Frontend React e Backend 100% integrados sob o modelo canônico de 7 tabelas.
+
+---
+
+## Phase 13: Polish & Cross-Cutting Concerns (E2E Suite, Docker & Final Quality Gate)
+
+**Purpose**: Alinhar volumes e identificadores Docker, reativar a suíte End-to-End (`tests/e2e/`) no modelo canônico e comprovar 100% de aprovação em todas as suítes.
+
+- [x] T103 [P] Update `docker-compose.yml`, `docker-compose.prod.yml`, and `Dockerfile` to copy/mount `./database:/app/database` and enforce canonical container, volume, and network names (`patrimonio_backend`, `patrimonio_frontend`, `patrimonio_postgres`, `patrimonio_net`, `patrimonio_data`)
+- [x] T104 Refactor E2E test suite in `tests/e2e/conftest.py`, `tests/e2e/test_tier1_feature_coverage.py`, `tests/e2e/test_tier2_boundary_corner.py`, `tests/e2e/test_tier3_cross_feature.py`, and `tests/e2e/test_tier4_real_world.py` to use `User(password_hash=...)` and canonical `/api/v1/assets`, `/api/v1/categories`, `/api/v1/locations`, and `/api/v1/movements` endpoints, removing `--ignore=tests/e2e` from `pyproject.toml`
+- [x] T105 Run full validation gate: `uv run ruff check .`, `PYTHONPATH=. uv run pytest --cov=src --cov-branch --cov-fail-under=100`, `PYTHONPATH=. uv run pytest tests/e2e/`, and `cd frontend && npx tsc --noEmit && npm test -- --run`
