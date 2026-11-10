@@ -92,9 +92,9 @@ services:
 
 volumes:
   patrimonio_data:
-    name: patrimonio_data
+    name: patrimonio_data_prod
 
 networks:
   patrimonio_net:
-    name: patrimonio_net
+    name: patrimonio_net_prod
     driver: bridge
