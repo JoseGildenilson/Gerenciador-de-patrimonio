@@ -4,6 +4,7 @@ Revision ID: d4e5f6a7b8c9
 Revises: c3d4e5f6a7b8
 Create Date: 2026-10-22 22:00:00.000000
 """
+
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
@@ -29,11 +30,21 @@ def upgrade() -> None:
         )
 
     # 1. Update users table with name, updated_at, and password_hash
-    op.add_column("users", sa.Column("name", sa.String(length=255), server_default="Usuário", nullable=False))
-    op.add_column("users", sa.Column("password_hash", sa.String(length=255), server_default="", nullable=False))
+    op.add_column(
+        "users", sa.Column("name", sa.String(length=255), server_default="Usuário", nullable=False)
+    )
+    op.add_column(
+        "users",
+        sa.Column("password_hash", sa.String(length=255), server_default="", nullable=False),
+    )
     op.execute("UPDATE users SET password_hash = hashed_password WHERE hashed_password IS NOT NULL")
     op.alter_column("users", "hashed_password", nullable=True)
-    op.add_column("users", sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
+    op.add_column(
+        "users",
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+    )
 
     # Update check constraint and enum type on users.role to allow administrador
     op.drop_constraint("chk_users_role_valid", "users", type_="check")
@@ -56,8 +67,12 @@ def upgrade() -> None:
         sa.Column("sector", sa.String(length=100), nullable=False),
         sa.Column("room_number", sa.String(length=50), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -74,10 +89,21 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("useful_life_months", sa.Integer(), nullable=True),
-        sa.Column("residual_value_rate", sa.Numeric(precision=5, scale=2), server_default="0.00", nullable=False),
-        sa.Column("requires_serial_number", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "residual_value_rate",
+            sa.Numeric(precision=5, scale=2),
+            server_default="0.00",
+            nullable=False,
+        ),
+        sa.Column(
+            "requires_serial_number", sa.Boolean(), server_default=sa.text("false"), nullable=False
+        ),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.CheckConstraint(
             "useful_life_months IS NULL OR useful_life_months > 0",
             name="ck_categories_useful_life_positive",
@@ -130,8 +156,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.CheckConstraint(
             "purchase_cost IS NULL OR purchase_cost >= 0.00",
             name="ck_assets_purchase_cost_non_negative",
@@ -157,7 +187,9 @@ def upgrade() -> None:
         sa.Column("new_patrimony_number", sa.String(length=100), nullable=False),
         sa.Column("reason", sa.String(length=255), nullable=False),
         sa.Column("changed_by_id", sa.Integer(), nullable=False),
-        sa.Column("changed_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "changed_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["changed_by_id"], ["users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
@@ -175,7 +207,12 @@ def upgrade() -> None:
         sa.Column("to_user_id", sa.Integer(), nullable=True),
         sa.Column("moved_by_id", sa.Integer(), nullable=False),
         sa.Column("term_accepted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("movement_date", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "movement_date",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.ForeignKeyConstraint(["asset_id"], ["assets.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["origin_location_id"], ["locations.id"], ondelete="RESTRICT"),
@@ -203,8 +240,12 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("cost", sa.Numeric(precision=12, scale=2), nullable=True),
         sa.Column("maintenance_date", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.CheckConstraint(
             "cost IS NULL OR cost >= 0.00",
             name="ck_asset_maintenances_cost_non_negative",
@@ -238,7 +279,9 @@ def downgrade() -> None:
         op.execute("ALTER TABLE users ALTER COLUMN role DROP DEFAULT")
         op.execute("ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(50) USING role::text")
         op.execute("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'tecnico'")
-    op.create_check_constraint("chk_users_role_valid", "users", "role IN ('tecnico', 'colaborador')")
+    op.create_check_constraint(
+        "chk_users_role_valid", "users", "role IN ('tecnico', 'colaborador')"
+    )
     op.alter_column("users", "hashed_password", nullable=False)
     op.drop_column("users", "updated_at")
     op.drop_column("users", "password_hash")

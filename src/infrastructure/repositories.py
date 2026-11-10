@@ -335,9 +335,8 @@ class AssetRepository:
         )
 
         offset = max(0, (page - 1) * limit)
-        data_stmt = (
-            select(Asset, last_maint_subq.label("last_maintenance_at"))
-            .where(Asset.deleted_at.is_(None))
+        data_stmt = select(Asset, last_maint_subq.label("last_maintenance_at")).where(
+            Asset.deleted_at.is_(None)
         )
         if category_id is not None:
             data_stmt = data_stmt.where(Asset.category_id == category_id)

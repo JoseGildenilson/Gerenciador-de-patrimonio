@@ -105,7 +105,11 @@ def generate_assets_spreadsheet(assets: list[Asset]) -> bytes:
         date_str = asset.purchase_date.strftime("%d/%m/%Y") if asset.purchase_date else ""
         specs_str = str(asset.specs) if asset.specs else ""
 
-        status_val = asset.status.value if hasattr(asset.status, "value") else (str(asset.status) if asset.status is not None else "")
+        status_val = (
+            asset.status.value
+            if hasattr(asset.status, "value")
+            else (str(asset.status) if asset.status is not None else "")
+        )
         row_data = [
             _sanitize_formula(asset.category.name if asset.category else None),
             _sanitize_formula(loc_str),

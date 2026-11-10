@@ -95,7 +95,9 @@ def get_asset_suggestions(
 ):
     """Retorna lista de sugestões para autocomplete nos filtros de ativos."""
     use_case = AssetUseCases(db)
-    return use_case.get_asset_suggestions(field=field, query=prefix if prefix is not None else query)
+    return use_case.get_asset_suggestions(
+        field=field, query=prefix if prefix is not None else query
+    )
 
 
 @router.get("/{id}", response_model=AssetDetailResponse)

@@ -9,7 +9,12 @@ import openpyxl
 import pytest
 from sqlalchemy.orm import Session
 
-from src.core.security import _revoked_tokens, create_access_token, create_refresh_token, hash_password
+from src.core.security import (
+    _revoked_tokens,
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+)
 from src.domain.models import Category, Location, User
 from src.use_cases.authenticate_user import reset_rate_limits
 

@@ -316,9 +316,7 @@ async def test_tier1_equipment_filter_multiple_fields_and_logic(
         },
     )
 
-    resp = await client.get(
-        f"/api/v1/assets?category_id={cat_nb['id']}&location_id={loc_ti['id']}"
-    )
+    resp = await client.get(f"/api/v1/assets?category_id={cat_nb['id']}&location_id={loc_ti['id']}")
     assert resp.status_code == 200
     items = resp.json()["items"]
     assert len(items) == 1
@@ -1029,9 +1027,7 @@ async def test_tier1_equipment_autocomplete_suggestions(client: AsyncClient, tec
         },
     )
 
-    response = await client.get(
-        "/api/v1/assets/suggestions?field=patrimony_number&prefix=PAT-S"
-    )
+    response = await client.get("/api/v1/assets/suggestions?field=patrimony_number&prefix=PAT-S")
     assert response.status_code == 200
     suggestions = response.json()
     assert "PAT-SUGG-100" in suggestions

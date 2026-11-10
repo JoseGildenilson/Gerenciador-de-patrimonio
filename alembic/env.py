@@ -88,7 +88,11 @@ def _sqlite_safe_drop_constraint(self, *args, **kwargs):
 
 
 def _sqlite_safe_execute(self, sqltext, *args, **kwargs):
-    if hasattr(self, "get_bind") and self.get_bind().dialect.name == "sqlite" and isinstance(sqltext, str):
+    if (
+        hasattr(self, "get_bind")
+        and self.get_bind().dialect.name == "sqlite"
+        and isinstance(sqltext, str)
+    ):
         stmt = sqltext.strip()
         upper = stmt.upper()
         if upper.startswith(

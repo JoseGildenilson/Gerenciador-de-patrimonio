@@ -30,7 +30,9 @@ class LocationUseCases:
 
     def create_location(self, data: LocationCreate) -> LocationResponse:
         """Cadastra nova localização garantindo unicidade do espaço físico."""
-        clean_room = data.room_number.strip() if data.room_number and data.room_number.strip() else None
+        clean_room = (
+            data.room_number.strip() if data.room_number and data.room_number.strip() else None
+        )
         existing = self.repo.get_by_physical_space(
             building=data.building,
             floor=data.floor,
@@ -68,7 +70,9 @@ class LocationUseCases:
         new_f = data.floor.strip() if data.floor is not None else location.floor
         new_s = data.sector.strip() if data.sector is not None else location.sector
         if "room_number" in data.model_fields_set:
-            new_r = data.room_number.strip() if data.room_number and data.room_number.strip() else None
+            new_r = (
+                data.room_number.strip() if data.room_number and data.room_number.strip() else None
+            )
         else:
             new_r = location.room_number
 

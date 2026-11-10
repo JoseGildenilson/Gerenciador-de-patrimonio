@@ -65,9 +65,7 @@ async def test_tier4_scenario_it_technician_onboarding_and_inventory_setup(
         )
         assert create_resp.status_code == 201
 
-    sugg_resp = await client.get(
-        "/api/v1/assets/suggestions?field=patrimony_number&prefix=PAT-CAD"
-    )
+    sugg_resp = await client.get("/api/v1/assets/suggestions?field=patrimony_number&prefix=PAT-CAD")
     assert sugg_resp.status_code == 200
     suggestions = sugg_resp.json()
     assert len(suggestions) == 3

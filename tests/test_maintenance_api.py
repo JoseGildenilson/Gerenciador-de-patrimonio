@@ -168,12 +168,8 @@ async def test_asset_maintenance_api_lifecycle(
     ).status_code == 404
 
     # 3c. Excluir manutenção (404 e 204)
-    assert (
-        await client.delete(f"/api/v1/assets/99999/maintenances/{maint_id}")
-    ).status_code == 404
-    assert (
-        await client.delete(f"/api/v1/assets/{asset.id}/maintenances/99999")
-    ).status_code == 404
+    assert (await client.delete(f"/api/v1/assets/99999/maintenances/{maint_id}")).status_code == 404
+    assert (await client.delete(f"/api/v1/assets/{asset.id}/maintenances/99999")).status_code == 404
     assert (
         await client.delete(f"/api/v1/assets/{asset.id}/maintenances/{maint_id}")
     ).status_code == 204

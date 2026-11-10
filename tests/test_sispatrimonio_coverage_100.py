@@ -580,7 +580,9 @@ async def test_phase12_new_endpoints_and_use_case_branches(
     db_session.add(asset)
     db_session.flush()
 
-    token = create_access_token({"sub": str(tecnico.id), "email": tecnico.email, "role": tecnico.role})
+    token = create_access_token(
+        {"sub": str(tecnico.id), "email": tecnico.email, "role": tecnico.role}
+    )
     client.cookies.set("access_token", token)
     resp_loc_conflict = await client.delete(f"/api/v1/locations/{loc.id}")
     assert resp_loc_conflict.status_code == 409

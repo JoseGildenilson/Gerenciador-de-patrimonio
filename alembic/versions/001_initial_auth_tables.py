@@ -1,9 +1,10 @@
 """Initial Auth Tables (users & login_attempts)
 
 Revision ID: 001_initial_auth
-Revises: 
+Revises:
 Create Date: 2026-08-12 19:00:00.000000
 """
+
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
@@ -35,7 +36,9 @@ def upgrade() -> None:
         sa.Column("success", sa.Boolean(), nullable=False, server_default="false"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_login_attempts_ip_address"), "login_attempts", ["ip_address"], unique=False)
+    op.create_index(
+        op.f("ix_login_attempts_ip_address"), "login_attempts", ["ip_address"], unique=False
+    )
 
 
 def downgrade() -> None:

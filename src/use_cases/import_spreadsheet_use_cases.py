@@ -162,11 +162,7 @@ class ExecuteSpreadsheetImportUseCase:
 
                 parsed_cost: Decimal | None = None
                 if row.purchase_cost:
-                    cleaned_cost = (
-                        row.purchase_cost.replace("R$", "")
-                        .replace(" ", "")
-                        .strip()
-                    )
+                    cleaned_cost = row.purchase_cost.replace("R$", "").replace(" ", "").strip()
                     if "," in cleaned_cost and "." in cleaned_cost:
                         cleaned_cost = cleaned_cost.replace(".", "").replace(",", ".")
                     elif "," in cleaned_cost:
