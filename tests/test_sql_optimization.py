@@ -37,9 +37,15 @@ class SQLQueryCounter:
 def test_list_assets_executes_minimal_queries(db_session):
     """Garante que a listagem de ativos executa no máximo 2 consultas (count + select joined)."""
     # Cria dados de teste
+    user = User(
+        name="Tecnico Teste",
+        email="tecnico.opt1@empresa.com",
+        password_hash="hash_secreto_super_longo",
+        role="tecnico",
+    )
     cat = Category(name="Notebooks Otimizados", requires_serial_number=True)
     loc = Location(building="B1", floor="1", sector="TI")
-    db_session.add_all([cat, loc])
+    db_session.add_all([user, cat, loc])
     db_session.commit()
 
     asset = Asset(
@@ -56,7 +62,7 @@ def test_list_assets_executes_minimal_queries(db_session):
 
     maint = AssetMaintenance(
         asset_id=asset.id,
-        registered_by_id=1,
+        registered_by_id=user.id,
         maintenance_type="preventiva",
         description="Limpeza preventiva",
         maintenance_date=datetime.now(timezone.utc),
@@ -80,9 +86,15 @@ def test_list_assets_executes_minimal_queries(db_session):
 
 def test_get_asset_detail_eager_history_minimal_queries(db_session):
     """Garante que o detalhe de ativo com histórico completo executa no máximo 4 consultas."""
+    user = User(
+        name="Tecnico Teste 2",
+        email="tecnico.opt2@empresa.com",
+        password_hash="hash_secreto_super_longo",
+        role="tecnico",
+    )
     cat = Category(name="Servidores Otimizados")
     loc = Location(building="B2", floor="2", sector="DataCenter")
-    db_session.add_all([cat, loc])
+    db_session.add_all([user, cat, loc])
     db_session.commit()
 
     asset = Asset(
@@ -99,7 +111,7 @@ def test_get_asset_detail_eager_history_minimal_queries(db_session):
 
     maint = AssetMaintenance(
         asset_id=asset.id,
-        registered_by_id=1,
+        registered_by_id=user.id,
         maintenance_type="corretiva",
         description="Substituição de disco",
         maintenance_date=datetime.now(timezone.utc),
